@@ -63,11 +63,11 @@ class MainWindow(QMainWindow):
         
         # Local repositories tab
         self.local_view = RepoView(self.gh, self.repo_manager, is_local=True)
-        self.tabs.addTab(self.local_view, "Local Repositories")
+        self.tabs.addTab(self.local_view, "💻 Local Repositories")
         
         # GitHub repositories tab
         self.remote_view = RepoView(self.gh, self.repo_manager, is_local=False)
-        self.tabs.addTab(self.remote_view, "GitHub Repositories")
+        self.tabs.addTab(self.remote_view, "☁️ GitHub Repositories")
         
         # Status bar
         self.status_bar = QStatusBar()
@@ -82,12 +82,12 @@ class MainWindow(QMainWindow):
         self.addToolBar(toolbar)
         
         # Login action
-        self.login_action = QAction("Login", self)
+        self.login_action = QAction("🔑 Login", self)
         self.login_action.triggered.connect(self.login)
         toolbar.addAction(self.login_action)
         
         # Logout action
-        self.logout_action = QAction("Logout", self)
+        self.logout_action = QAction("🚪 Logout", self)
         self.logout_action.triggered.connect(self.logout)
         self.logout_action.setEnabled(False)
         toolbar.addAction(self.logout_action)
@@ -95,19 +95,19 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
         
         # Scan local repos
-        scan_action = QAction("Scan Directory", self)
+        scan_action = QAction("📁 Scan Directory", self)
         scan_action.triggered.connect(self.scan_directory)
         toolbar.addAction(scan_action)
         
         # Create repo
-        create_action = QAction("Create Repository", self)
+        create_action = QAction("➕ Create Repository", self)
         create_action.triggered.connect(self.create_repository)
         toolbar.addAction(create_action)
         
         toolbar.addSeparator()
         
         # Refresh
-        refresh_action = QAction("Refresh", self)
+        refresh_action = QAction("🔄 Refresh", self)
         refresh_action.triggered.connect(self.refresh)
         toolbar.addAction(refresh_action)
     

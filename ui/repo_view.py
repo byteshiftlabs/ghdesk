@@ -75,11 +75,12 @@ class RepoView(QWidget):
         layout.addLayout(button_layout)
         
         if not self.is_local:
-            self.delete_btn = QPushButton("Delete Selected")
+            self.delete_btn = QPushButton("🗑️ Delete Selected")
+            self.delete_btn.setObjectName("dangerButton")
             self.delete_btn.clicked.connect(self.delete_selected)
             button_layout.addWidget(self.delete_btn)
             
-            self.clone_btn = QPushButton("Clone Selected")
+            self.clone_btn = QPushButton("⬇️ Clone Selected")
             self.clone_btn.clicked.connect(self.clone_selected)
             button_layout.addWidget(self.clone_btn)
         
