@@ -74,7 +74,7 @@ class CreateRepoDialog(QDialog):
         
         button_layout.addStretch()
         
-        self.create_btn = QPushButton("✨ Create")
+        self.create_btn = QPushButton("Create")
         self.create_btn.setDefault(True)
         self.create_btn.clicked.connect(self.create_repository)
         button_layout.addWidget(self.create_btn)

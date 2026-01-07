@@ -5,6 +5,7 @@ Provides Python interface to gh commands
 
 import subprocess
 import json
+import os
 from typing import Optional, List, Dict, Any
 
 
@@ -27,13 +28,14 @@ class GHWrapper:
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise RuntimeError("GitHub CLI (gh) is not installed or not in PATH")
     
-    def _run_command(self, args: List[str], capture_json: bool = False) -> Dict[str, Any]:
+    def _run_command(self, args: List[str], capture_json: bool = False, input_data: Optional[str] = None) -> Dict[str, Any]:
         """
-        Run a gh command and return result
+        Run a gh CLI command
         
         Args:
-            args: Command arguments (without 'gh' prefix)
-            capture_json: If True, parse output as JSON
+            args: Command arguments (without 'gh')
+            capture_json: Whether to parse output as JSON
+            input_data: Optional stdin data
             
         Returns:
             Dict with 'success', 'output', 'error' keys
@@ -45,7 +47,8 @@ class GHWrapper:
                 cmd,
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
+                input=input_data
             )
             
             output = result.stdout.strip()
@@ -173,6 +176,24 @@ class GHWrapper:
         
         return self._run_command(args, capture_json=True)
     
+    def get_repo(self, repo: str) -> Optional[Dict[str, Any]]:
+        """
+        Get detailed repository information
+        
+        Args:
+            repo: Repository name (owner/repo)
+            
+        Returns:
+            Repository dict or None if not found
+        """
+        args = ["repo", "view", repo, "--json", 
+                "name,owner,description,url,isPrivate,stargazerCount,forkCount,issues,createdAt,updatedAt,repositoryTopics"]
+        result = self._run_command(args, capture_json=True)
+        
+        if result["success"] and isinstance(result["output"], dict):
+            return result["output"]
+        return None
+    
     def edit_repo(self, repo: str, **kwargs) -> Dict[str, Any]:
         """
         Edit repository settings
@@ -191,6 +212,114 @@ class GHWrapper:
             args.extend(["--homepage", kwargs["homepage"]])
         
         return self._run_command(args)
+    
+    def add_topic(self, repo: str, topic: str) -> Dict[str, Any]:
+        """
+        Add a topic to a repository
+        
+        Args:
+            repo: Repository name (owner/repo)
+            topic: Topic name to add (e.g., "python", "machine-learning")
+            
+        Returns:
+            Result dict with success status
+        """
+        # GitHub CLI doesn't have a direct topic command, use API via gh api
+        args = ["api", f"repos/{repo}/topics", "-X", "PUT", "-F", f"names[]=@-"]
+        
+        # First, get existing topics
+        get_result = self.get_repo(repo)
+        if not get_result:
+            return {"success": False, "error": "Failed to get repository info"}
+        
+        existing_topics = get_result.get("repositoryTopics") or []
+        topic_names = [t.get("name") for t in existing_topics if isinstance(t, dict) and t.get("name")]
+        
+        # Add new topic if not already present
+        if topic.lower() not in [t.lower() for t in topic_names]:
+            topic_names.append(topic.lower())
+        
+        # Update topics via API
+        import json
+        topics_json = json.dumps({"names": topic_names})
+        result = self._run_command(
+            ["api", f"repos/{repo}/topics", "-X", "PUT", "--input", "-"],
+            input_data=topics_json
+        )
+        
+        return result
+    
+    def remove_topic(self, repo: str, topic: str) -> Dict[str, Any]:
+        """
+        Remove a topic from a repository
+        
+        Args:
+            repo: Repository name (owner/repo)
+            topic: Topic name to remove
+            
+        Returns:
+            Result dict with success status
+        """
+        # Get existing topics
+        get_result = self.get_repo(repo)
+        if not get_result:
+            return {"success": False, "error": "Failed to get repository info"}
+        
+        existing_topics = get_result.get("repositoryTopics") or []
+        topic_names = [t.get("name") for t in existing_topics if isinstance(t, dict) and t.get("name")]
+        
+        # Remove topic (case insensitive)
+        topic_names = [t for t in topic_names if t.lower() != topic.lower()]
+        
+        # Update topics via API
+        import json
+        topics_json = json.dumps({"names": topic_names})
+        result = self._run_command(
+            ["api", f"repos/{repo}/topics", "-X", "PUT", "--input", "-"],
+            input_data=topics_json
+        )
+        
+        return result
+    
+    def get_commits(self, repo: str, branch: str = None, limit: int = 20) -> list:
+        """
+        Get recent commits from a repository
+        
+        Args:
+            repo: Repository name (owner/repo)
+            branch: Branch name to get commits from (optional, defaults to all branches)
+            limit: Maximum number of commits to fetch
+            
+        Returns:
+            List of commit dicts with sha, message, author, and date
+        """
+        # Use jq to format as array of objects
+        if branch:
+            args = ["api", f"repos/{repo}/commits?sha={branch}", "-q", f".[:{limit}] | map({{sha: .sha[0:7], message: .commit.message, author: .commit.author.name, date: .commit.author.date}})"]
+        else:
+            args = ["api", f"repos/{repo}/commits", "-q", f".[:{limit}] | map({{sha: .sha[0:7], message: .commit.message, author: .commit.author.name, date: .commit.author.date}})"]
+        result = self._run_command(args, capture_json=True)
+        
+        if result["success"] and isinstance(result["output"], list):
+            return result["output"]
+        return []
+    
+    def get_branches(self, repo: str) -> list:
+        """
+        Get branches from a repository
+        
+        Args:
+            repo: Repository name (owner/repo)
+            
+        Returns:
+            List of branch dicts with name
+        """
+        args = ["api", f"repos/{repo}/branches", "-q", "map({name: .name})"]
+        result = self._run_command(args, capture_json=True)
+        
+        if result["success"] and isinstance(result["output"], list):
+            return result["output"]
+        return []
     
     def clone_repo(self, repo: str, directory: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -254,3 +383,186 @@ class GHWrapper:
             args.extend(["--repo", repo])
         
         return self._run_command(args, capture_json=True)
+    
+    # =========================================================================
+    # Tags/Releases
+    # =========================================================================
+    
+    def list_tags(self, repo: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        List repository tags
+        
+        Args:
+            repo: Repository name (owner/repo), or None for current
+            limit: Maximum number of tags to return
+            
+        Returns:
+            List of tag dicts with name, commit info
+        """
+        args = ["api", "repos"]
+        
+        if repo:
+            args.append(repo)
+        else:
+            # Will use current repo
+            pass
+        
+        args.extend(["/tags", "--jq", ".[].name", "--paginate"])
+        
+        result = self._run_command(args)
+        if result["success"] and result["output"]:
+            tags = result["output"].strip().split("\n")
+            return [{"name": tag} for tag in tags if tag]
+        return []
+    
+    def create_tag(self, repo: str, tag_name: str, target: str = "HEAD", 
+                  message: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Create a new tag via Git (local) and push to remote
+        
+        Args:
+            repo: Repository path (local directory)
+            tag_name: Name of the tag (e.g., "v1.0.0")
+            target: Commit SHA or branch name (default: HEAD)
+            message: Optional tag message (creates annotated tag)
+            
+        Returns:
+            Dict with success status and message
+        """
+        import subprocess
+        
+        try:
+            # Change to repo directory
+            original_dir = os.getcwd()
+            os.chdir(repo)
+            
+            # Create tag locally
+            git_cmd = ["git", "tag"]
+            if message:
+                git_cmd.extend(["-a", tag_name, "-m", message])
+            else:
+                git_cmd.append(tag_name)
+            git_cmd.append(target)
+            
+            result = subprocess.run(git_cmd, capture_output=True, text=True, check=False)
+            
+            if result.returncode != 0:
+                os.chdir(original_dir)
+                return {
+                    "success": False,
+                    "output": "",
+                    "error": f"Failed to create tag: {result.stderr.strip()}",
+                    "returncode": result.returncode
+                }
+            
+            # Push tag to remote
+            push_result = subprocess.run(
+                ["git", "push", "origin", tag_name],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            
+            os.chdir(original_dir)
+            
+            if push_result.returncode != 0:
+                return {
+                    "success": False,
+                    "output": result.stdout.strip(),
+                    "error": f"Tag created locally but push failed: {push_result.stderr.strip()}",
+                    "returncode": push_result.returncode
+                }
+            
+            return {
+                "success": True,
+                "output": f"Tag '{tag_name}' created and pushed successfully",
+                "error": "",
+                "returncode": 0
+            }
+            
+        except Exception as e:
+            try:
+                os.chdir(original_dir)
+            except:
+                pass
+            return {
+                "success": False,
+                "output": "",
+                "error": str(e),
+                "returncode": -1
+            }
+    
+    def delete_tag(self, repo: str, tag_name: str, remote: bool = True) -> Dict[str, Any]:
+        """
+        Delete a tag locally and optionally from remote
+        
+        Args:
+            repo: Repository path (local directory)
+            tag_name: Name of the tag to delete
+            remote: Also delete from remote (default: True)
+            
+        Returns:
+            Dict with success status and message
+        """
+        import subprocess
+        
+        try:
+            original_dir = os.getcwd()
+            os.chdir(repo)
+            
+            # Delete local tag
+            result = subprocess.run(
+                ["git", "tag", "-d", tag_name],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            
+            if result.returncode != 0:
+                os.chdir(original_dir)
+                return {
+                    "success": False,
+                    "output": "",
+                    "error": f"Failed to delete local tag: {result.stderr.strip()}",
+                    "returncode": result.returncode
+                }
+            
+            # Delete remote tag if requested
+            if remote:
+                push_result = subprocess.run(
+                    ["git", "push", "origin", f":refs/tags/{tag_name}"],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+                
+                os.chdir(original_dir)
+                
+                if push_result.returncode != 0:
+                    return {
+                        "success": False,
+                        "output": result.stdout.strip(),
+                        "error": f"Local tag deleted but remote deletion failed: {push_result.stderr.strip()}",
+                        "returncode": push_result.returncode
+                    }
+            else:
+                os.chdir(original_dir)
+            
+            return {
+                "success": True,
+                "output": f"Tag '{tag_name}' deleted successfully",
+                "error": "",
+                "returncode": 0
+            }
+            
+        except Exception as e:
+            try:
+                os.chdir(original_dir)
+            except:
+                pass
+            return {
+                "success": False,
+                "output": "",
+                "error": str(e),
+                "returncode": -1
+            }

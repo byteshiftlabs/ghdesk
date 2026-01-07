@@ -8,7 +8,7 @@ import sys
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 from ui.main_window import MainWindow
-from ui.styles import DARK_THEME
+from ui.themes import get_theme
 
 
 def main():
@@ -22,8 +22,8 @@ def main():
     app.setApplicationName("ghdesk")
     app.setOrganizationName("cmelnulabs")
     
-    # Apply modern dark theme
-    app.setStyleSheet(DARK_THEME)
+    # Apply default dark theme
+    app.setStyleSheet(get_theme("dark"))
     
     window = MainWindow()
     window.show()

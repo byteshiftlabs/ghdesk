@@ -3,14 +3,79 @@ Repository view widget
 Displays list of repositories with actions
 """
 
+import shutil
+from pathlib import Path
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
-    QTableWidgetItem, QPushButton, QMessageBox, QHeaderView
+    QTableWidgetItem, QPushButton, QMessageBox, QHeaderView,
+    QDialog, QLabel, QCheckBox, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from core.gh_wrapper import GHWrapper
 from core.repo_manager import RepoManager
+
+
+def create_confirmation_dialog(parent, title: str, main_text: str, info_text: str,
+                                icon=QMessageBox.Icon.Question,
+                                yes_text: str = "Yes", no_text: str = "No",
+                                checkbox_text: str = None) -> tuple:
+    """
+    Create a properly sized confirmation dialog
+    
+    Returns:
+        (accepted: bool, checkbox_checked: bool) if checkbox_text provided
+        accepted: bool if no checkbox
+    """
+    dialog = QDialog(parent)
+    dialog.setWindowTitle(title)
+    
+    layout = QVBoxLayout()
+    layout.setContentsMargins(24, 24, 24, 20)
+    layout.setSpacing(16)
+    dialog.setLayout(layout)
+    
+    # Main text
+    main_label = QLabel(main_text)
+    main_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+    main_label.setWordWrap(True)
+    main_label.setMinimumWidth(350)
+    layout.addWidget(main_label)
+    
+    # Info text
+    info_label = QLabel(info_text)
+    info_label.setStyleSheet("font-size: 13px;")
+    info_label.setWordWrap(True)
+    info_label.setTextFormat(Qt.TextFormat.RichText)
+    info_label.setMinimumWidth(350)
+    layout.addWidget(info_label)
+    
+    # Optional checkbox
+    checkbox = None
+    if checkbox_text:
+        checkbox = QCheckBox(checkbox_text)
+        layout.addWidget(checkbox)
+    
+    layout.addStretch()
+    
+    # Buttons
+    button_box = QDialogButtonBox()
+    yes_btn = QPushButton(yes_text)
+    yes_btn.setMinimumWidth(100)
+    yes_btn.clicked.connect(dialog.accept)
+    no_btn = QPushButton(no_text)
+    no_btn.setMinimumWidth(100)
+    no_btn.clicked.connect(dialog.reject)
+    button_box.addButton(yes_btn, QDialogButtonBox.ButtonRole.AcceptRole)
+    button_box.addButton(no_btn, QDialogButtonBox.ButtonRole.RejectRole)
+    layout.addWidget(button_box)
+    
+    result = dialog.exec() == QDialog.DialogCode.Accepted
+    
+    if checkbox_text:
+        return result, checkbox.isChecked() if checkbox else False
+    return result
 
 
 class LoadReposThread(QThread):
@@ -39,6 +104,9 @@ class LoadReposThread(QThread):
 class RepoView(QWidget):
     """Widget for displaying repositories"""
     
+    # Signal emitted when a repo is selected (double-clicked)
+    repo_selected = pyqtSignal(str)  # Emits repo path for local, repo full name for remote
+    
     def __init__(self, gh: GHWrapper, repo_manager: RepoManager, is_local: bool = True):
         super().__init__()
         
@@ -56,17 +124,27 @@ class RepoView(QWidget):
         
         # Repository table
         self.table = QTableWidget()
-        self.table.setColumnCount(5 if self.is_local else 6)
+        self.table.setColumnCount(5 if self.is_local else 5)
         
         if self.is_local:
             headers = ["Name", "Path", "Branch", "Status", "Remote"]
         else:
-            headers = ["Name", "Owner", "Description", "Private", "Updated", "Actions"]
+            headers = ["Name", "Owner", "Description", "Visibility", "Updated"]
         
         self.table.setHorizontalHeaderLabels(headers)
         self.table.horizontalHeader().setStretchLastSection(True)
+        # Set uniform column widths
+        header = self.table.horizontalHeader()
+        for i in range(5):
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Interactive)
+        self.table.setColumnWidth(0, 180)  # Name
+        self.table.setColumnWidth(1, 120)  # Owner/Path
+        self.table.setColumnWidth(2, 200)  # Description/Branch
+        self.table.setColumnWidth(3, 100)  # Visibility/Status
+        self.table.setColumnWidth(4, 120)  # Updated/Remote
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.clicked.connect(self.on_row_clicked)
         
         layout.addWidget(self.table)
         
@@ -75,14 +153,18 @@ class RepoView(QWidget):
         layout.addLayout(button_layout)
         
         if not self.is_local:
-            self.delete_btn = QPushButton("🗑️ Delete Selected")
+            self.visibility_btn = QPushButton("Change Visibility")
+            self.visibility_btn.clicked.connect(self.change_visibility)
+            button_layout.addWidget(self.visibility_btn)
+            
+            self.clone_btn = QPushButton("Clone Selected")
+            self.clone_btn.clicked.connect(self.clone_selected)
+            button_layout.addWidget(self.clone_btn)
+            
+            self.delete_btn = QPushButton("Delete Selected")
             self.delete_btn.setObjectName("dangerButton")
             self.delete_btn.clicked.connect(self.delete_selected)
             button_layout.addWidget(self.delete_btn)
-            
-            self.clone_btn = QPushButton("⬇️ Clone Selected")
-            self.clone_btn.clicked.connect(self.clone_selected)
-            button_layout.addWidget(self.clone_btn)
         
         button_layout.addStretch()
     
@@ -122,15 +204,44 @@ class RepoView(QWidget):
                 self.table.setItem(row, 4, QTableWidgetItem(repo.get("remote", "")))
             else:
                 owner = repo.get("owner", {}).get("login", "") if isinstance(repo.get("owner"), dict) else ""
+                is_private = repo.get("isPrivate")
+                visibility_text = "🔒 Private" if is_private else "🌐 Public"
                 
                 self.table.setItem(row, 0, QTableWidgetItem(repo.get("name", "")))
                 self.table.setItem(row, 1, QTableWidgetItem(owner))
                 self.table.setItem(row, 2, QTableWidgetItem(repo.get("description", "")))
-                self.table.setItem(row, 3, QTableWidgetItem("Yes" if repo.get("isPrivate") else "No"))
+                
+                visibility_item = QTableWidgetItem(visibility_text)
+                # Color code the visibility
+                if is_private:
+                    visibility_item.setForeground(Qt.GlobalColor.darkYellow)
+                else:
+                    visibility_item.setForeground(Qt.GlobalColor.darkGreen)
+                self.table.setItem(row, 3, visibility_item)
+                
                 self.table.setItem(row, 4, QTableWidgetItem(repo.get("updatedAt", "")[:10]))
         
         self.table.setSortingEnabled(True)
         self.table.resizeColumnsToContents()
+    
+    def on_row_clicked(self, index):
+        """Handle click on a row"""
+        row = index.row()
+        if row < 0 or row >= len(self.repos):
+            return
+        
+        repo = self.repos[row]
+        if self.is_local:
+            # Emit the local path
+            path = repo.get("path", "")
+            if path:
+                self.repo_selected.emit(path)
+        else:
+            # Emit owner/name for remote repos
+            owner = repo.get("owner", {}).get("login", "") if isinstance(repo.get("owner"), dict) else ""
+            name = repo.get("name", "")
+            if owner and name:
+                self.repo_selected.emit(f"{owner}/{name}")
     
     def delete_selected(self):
         """Delete selected repository"""
@@ -146,20 +257,58 @@ class RepoView(QWidget):
         name = repo.get("name", "")
         repo_full = f"{owner}/{name}"
         
-        reply = QMessageBox.question(
-            self, "Confirm Delete",
-            f"Are you sure you want to delete {repo_full}?\nThis cannot be undone!",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        # Check if there's a local clone
+        local_path = self._find_local_clone(name)
+        
+        accepted, delete_local = create_confirmation_dialog(
+            self,
+            "Confirm Delete",
+            f"Delete repository '{repo_full}'?",
+            f"<span style='color: #f44336;'>⚠️ <b>Warning:</b> This action cannot be undone!</span><br><br>"
+            f"The remote repository on GitHub will be permanently deleted.",
+            icon=QMessageBox.Icon.Warning,
+            yes_text="Yes, Delete",
+            no_text="Cancel",
+            checkbox_text="Also delete local clone" if local_path else None
         )
         
-        if reply == QMessageBox.StandardButton.Yes:
+        if accepted:
             result = self.gh.delete_repo(repo_full, confirm=True)
             if result["success"]:
-                QMessageBox.information(self, "Success", f"Deleted {repo_full}")
+                msg = f"Deleted remote repository: {repo_full}"
+                
+                # Delete local clone if checkbox was checked
+                if delete_local and local_path:
+                    try:
+                        shutil.rmtree(local_path)
+                        msg += f"\nDeleted local clone: {local_path}"
+                    except Exception as e:
+                        msg += f"\nFailed to delete local clone: {e}"
+                
+                QMessageBox.information(self, "Success", msg)
                 self.load_repos()
             else:
                 QMessageBox.warning(self, "Delete Failed",
                                   f"Failed to delete repository:\n{result['error']}")
+    
+    def _find_local_clone(self, repo_name: str) -> str:
+        """Find local clone of a repository by name"""
+        # Common locations to check
+        home = Path.home()
+        search_paths = [
+            home / "Proyectos" / repo_name,
+            home / "Projects" / repo_name,
+            home / "repos" / repo_name,
+            home / "git" / repo_name,
+            home / repo_name,
+            Path.cwd() / repo_name,
+        ]
+        
+        for path in search_paths:
+            if path.exists() and (path / ".git").exists():
+                return str(path)
+        
+        return None
     
     def clone_selected(self):
         """Clone selected repository"""
@@ -176,7 +325,6 @@ class RepoView(QWidget):
         repo_full = f"{owner}/{name}"
         
         from PyQt6.QtWidgets import QFileDialog
-        from pathlib import Path
         
         directory = QFileDialog.getExistingDirectory(
             self, "Select Clone Destination",
@@ -192,3 +340,46 @@ class RepoView(QWidget):
             else:
                 QMessageBox.warning(self, "Clone Failed",
                                   f"Failed to clone repository:\n{result['error']}")
+    
+    def change_visibility(self):
+        """Change visibility of selected repository"""
+        selected_rows = self.table.selectionModel().selectedRows()
+        
+        if not selected_rows:
+            QMessageBox.warning(self, "No Selection", "Please select a repository")
+            return
+        
+        row = selected_rows[0].row()
+        repo = self.repos[row]
+        owner = repo.get("owner", {}).get("login", "")
+        name = repo.get("name", "")
+        repo_full = f"{owner}/{name}"
+        is_private = repo.get("isPrivate", False)
+        
+        # Ask for new visibility
+        new_visibility = "public" if is_private else "private"
+        current_icon = "🔒" if is_private else "🌐"
+        new_icon = "🌐" if is_private else "🔒"
+        
+        accepted = create_confirmation_dialog(
+            self,
+            "Change Visibility",
+            f"Change visibility of '{repo_full}'?",
+            f"<table style='font-size: 13px;'>"
+            f"<tr><td>Current:</td><td><b>{current_icon} {'Private' if is_private else 'Public'}</b></td></tr>"
+            f"<tr><td>New:</td><td><b>{new_icon} {new_visibility.capitalize()}</b></td></tr>"
+            f"</table>",
+            yes_text=f"Make {new_visibility.capitalize()}",
+            no_text="Cancel"
+        )
+        
+        if accepted:
+            result = self.gh.edit_repo(repo_full, visibility=new_visibility)
+            
+            if result["success"]:
+                QMessageBox.information(self, "Success", 
+                                      f"Repository is now {new_visibility}")
+                self.load_repos()
+            else:
+                QMessageBox.warning(self, "Failed",
+                                  f"Failed to change visibility:\n{result['error']}")

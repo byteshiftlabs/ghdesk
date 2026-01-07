@@ -2,6 +2,14 @@
 Modern styling for ghdesk
 """
 
+THEMES = {
+    "dark": "Dark",
+    "light": "Light",
+    "nord": "Nord",
+    "dracula": "Dracula",
+    "monokai": "Monokai"
+}
+
 DARK_THEME = """
 QMainWindow {
     background-color: #1e1e1e;
@@ -244,6 +252,41 @@ QMessageBox {
 
 QMessageBox QPushButton {
     min-width: 80px;
+}
+
+QTreeWidget {
+    background-color: #1e1e1e;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    outline: none;
+}
+
+QTreeWidget::item {
+    padding: 6px;
+    border: none;
+    color: #e0e0e0;
+}
+
+QTreeWidget::item:hover {
+    background-color: #2d2d30;
+}
+
+QTreeWidget::item:selected {
+    background-color: #094771;
+    color: #ffffff;
+}
+
+QTreeWidget::branch {
+    background-color: #1e1e1e;
+}
+
+QSplitter::handle {
+    background-color: #3e3e42;
+    width: 2px;
+}
+
+QSplitter::handle:hover {
+    background-color: #007acc;
 }
 """
 
@@ -491,5 +534,40 @@ QMessageBox {
 
 QMessageBox QPushButton {
     min-width: 80px;
+}
+
+QTreeWidget {
+    background-color: #ffffff;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    outline: none;
+}
+
+QTreeWidget::item {
+    padding: 6px;
+    border: none;
+    color: #1e1e1e;
+}
+
+QTreeWidget::item:hover {
+    background-color: #f0f0f0;
+}
+
+QTreeWidget::item:selected {
+    background-color: #cce8ff;
+    color: #1e1e1e;
+}
+
+QTreeWidget::branch {
+    background-color: #ffffff;
+}
+
+QSplitter::handle {
+    background-color: #d0d0d0;
+    width: 2px;
+}
+
+QSplitter::handle:hover {
+    background-color: #0078d4;
 }
 """
