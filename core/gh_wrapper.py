@@ -117,7 +117,7 @@ class GHWrapper:
             List of repository dicts
         """
         result = self._run_command(
-            ["repo", "list", "--json", "name,owner,description,url,isPrivate,updatedAt", 
+            ["repo", "list", "--json", "name,owner,description,url,isPrivate,updatedAt,licenseInfo", 
              "--limit", str(limit)],
             capture_json=True
         )
@@ -212,6 +212,91 @@ class GHWrapper:
             args.extend(["--homepage", kwargs["homepage"]])
         
         return self._run_command(args)
+    
+    def change_license(self, repo: str, license_key: str) -> Dict[str, Any]:
+        """
+        Change repository license by creating/updating LICENSE file.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            license_key: SPDX license identifier (e.g., 'mit', 'apache-2.0', 'gpl-3.0')
+            
+        Returns:
+            Result dict with success status
+        """
+        # Get license template from GitHub
+        license_result = self._run_command(
+            ["api", f"licenses/{license_key}"],
+            capture_json=True
+        )
+        
+        if not license_result.get("success"):
+            return {"success": False, "error": f"Failed to get license template: {license_result.get('error', 'Unknown error')}"}
+        
+        license_data = license_result.get("output", {})
+        license_body = license_data.get("body", "")
+        
+        if not license_body:
+            return {"success": False, "error": "License template is empty"}
+        
+        # Replace placeholders in license template
+        import datetime
+        current_year = str(datetime.datetime.now().year)
+        
+        # Get user info for copyright
+        user_result = self._run_command(["api", "user"], capture_json=True)
+        user_name = "Your Name"
+        if user_result.get("success"):
+            user_data = user_result.get("output", {})
+            user_name = user_data.get("name") or user_data.get("login", "Your Name")
+        
+        # Replace common placeholders
+        license_body = license_body.replace("[year]", current_year)
+        license_body = license_body.replace("[yyyy]", current_year)
+        license_body = license_body.replace("<year>", current_year)
+        license_body = license_body.replace("[fullname]", user_name)
+        license_body = license_body.replace("[name of copyright owner]", user_name)
+        license_body = license_body.replace("<name of author>", user_name)
+        license_body = license_body.replace("[email]", "")
+        
+        # Check if LICENSE file exists
+        check_result = self._run_command(
+            ["api", f"repos/{repo}/contents/LICENSE"],
+            capture_json=True
+        )
+        
+        import base64
+        import json
+        
+        license_content_b64 = base64.b64encode(license_body.encode()).decode()
+        
+        if check_result.get("success"):
+            # File exists, update it
+            file_sha = check_result.get("output", {}).get("sha", "")
+            update_data = json.dumps({
+                "message": f"Update LICENSE to {license_key.upper()}",
+                "content": license_content_b64,
+                "sha": file_sha
+            })
+            result = self._run_command(
+                ["api", f"repos/{repo}/contents/LICENSE", "-X", "PUT", "--input", "-"],
+                input_data=update_data
+            )
+        else:
+            # File doesn't exist, create it
+            create_data = json.dumps({
+                "message": f"Add {license_key.upper()} license",
+                "content": license_content_b64
+            })
+            result = self._run_command(
+                ["api", f"repos/{repo}/contents/LICENSE", "-X", "PUT", "--input", "-"],
+                input_data=create_data
+            )
+        
+        if result.get("success"):
+            return {"success": True, "message": f"License changed to {license_key.upper()}"}
+        else:
+            return {"success": False, "error": result.get("error", "Failed to update license")}
     
     def add_topic(self, repo: str, topic: str) -> Dict[str, Any]:
         """

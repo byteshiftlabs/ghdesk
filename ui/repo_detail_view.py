@@ -17,6 +17,7 @@ import git
 
 from core.gh_wrapper import GHWrapper
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
+from ui.dialogs import show_message_dialog, show_confirmation_dialog
 
 
 class LoadRepoDetailsThread(QThread):
@@ -135,6 +136,9 @@ class LoadRepoDetailsThread(QThread):
 class RepoDetailView(QWidget):
     """Widget showing detailed repository information"""
     
+    # Signal emitted when hide button is clicked
+    hide_requested = pyqtSignal()
+    
     def __init__(self, gh: GHWrapper):
         super().__init__()
         self.gh = gh
@@ -149,10 +153,38 @@ class RepoDetailView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         
-        # Header with repo name
+        # Header with repo name and hide button
+        header_container = QWidget()
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(10, 10, 10, 10)
+        header_container.setLayout(header_layout)
+        
         self.header = QLabel("Select a repository from the file tree")
-        self.header.setStyleSheet("font-size: 16px; font-weight: 600; padding: 10px;")
-        layout.addWidget(self.header)
+        self.header.setStyleSheet("font-size: 16px; font-weight: 600;")
+        header_layout.addWidget(self.header)
+        
+        header_layout.addStretch()
+        
+        # Hide button (X icon like VS Code)
+        hide_btn = QPushButton("✕")
+        hide_btn.setFixedSize(24, 24)
+        hide_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                font-size: 18px;
+                color: #666;
+            }
+            QPushButton:hover {
+                background: rgba(0, 0, 0, 0.1);
+                color: #000;
+            }
+        """)
+        hide_btn.setToolTip("Hide panel")
+        hide_btn.clicked.connect(self.hide_requested.emit)
+        header_layout.addWidget(hide_btn)
+        
+        layout.addWidget(header_container)
         
         # Loading indicator
         self.loading_label = QLabel("Loading...")
@@ -606,6 +638,7 @@ class RepoDetailView(QWidget):
             return
         
         # Create custom input dialog
+        print("[DIALOG] Creating inline 'Add Topic' dialog")
         dialog = QDialog(self)
         dialog.setWindowTitle("Add Topic")
         
@@ -643,6 +676,7 @@ class RepoDetailView(QWidget):
         layout.addWidget(button_box)
         
         dialog.adjustSize()
+        print("[DIALOG] Executing inline 'Add Topic' dialog")
         
         # Execute dialog
         if dialog.exec() != QDialog.DialogCode.Accepted:

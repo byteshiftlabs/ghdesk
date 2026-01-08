@@ -5,9 +5,35 @@ All dialogs follow the same compact design pattern.
 
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, 
-    QDialogButtonBox, QCheckBox, QSizePolicy
+    QDialogButtonBox, QCheckBox, QSizePolicy, QApplication, QStyle
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
+
+
+def center_dialog_on_parent(dialog: QDialog):
+    """Center a dialog on its parent window.
+    
+    Uses frameGeometry() to account for window decorations and ensures
+    the dialog is properly sized before positioning.
+    """
+    # Ensure dialog has been styled and has final size
+    dialog.ensurePolished()
+    dialog.adjustSize()
+    
+    if dialog.parent() is None:
+        # Center on screen if no parent
+        screen = QApplication.primaryScreen().geometry()
+        frame_geo = dialog.frameGeometry()
+        frame_geo.moveCenter(screen.center())
+        dialog.move(frame_geo.topLeft())
+    else:
+        # Center on parent - use frameGeometry to include decorations
+        parent_geometry = dialog.parent().frameGeometry()
+        dialog_geometry = dialog.frameGeometry()
+        
+        # Calculate center position using QRect operations
+        dialog_geometry.moveCenter(parent_geometry.center())
+        dialog.move(dialog_geometry.topLeft())
 
 
 def show_message_dialog(parent, title: str, main_text: str, info_text: str = None,
@@ -25,6 +51,9 @@ def show_message_dialog(parent, title: str, main_text: str, info_text: str = Non
     dialog = QDialog(parent)
     dialog.setWindowTitle(title)
     dialog.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+    
+    # Set window modality to force GNOME to respect positioning better
+    dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
     
     layout = QVBoxLayout()
     layout.setContentsMargins(12, 12, 12, 12)
@@ -53,7 +82,9 @@ def show_message_dialog(parent, title: str, main_text: str, info_text: str = Non
     button_box.addButton(ok_btn, QDialogButtonBox.ButtonRole.AcceptRole)
     layout.addWidget(button_box)
     
-    dialog.adjustSize()
+    # Center on parent (handles sizing internally)
+    center_dialog_on_parent(dialog)
+    
     dialog.exec()
 
 
@@ -79,6 +110,9 @@ def show_confirmation_dialog(parent, title: str, main_text: str, info_text: str 
     dialog = QDialog(parent)
     dialog.setWindowTitle(title)
     dialog.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+    
+    # Set window modality to force GNOME to respect positioning better
+    dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
     
     layout = QVBoxLayout()
     layout.setContentsMargins(12, 12, 12, 12)
@@ -117,7 +151,9 @@ def show_confirmation_dialog(parent, title: str, main_text: str, info_text: str 
     button_box.addButton(no_btn, QDialogButtonBox.ButtonRole.RejectRole)
     layout.addWidget(button_box)
     
-    dialog.adjustSize()
+    # Center on parent (handles sizing internally)
+    center_dialog_on_parent(dialog)
+    
     result = dialog.exec() == QDialog.DialogCode.Accepted
     
     if checkbox_text:

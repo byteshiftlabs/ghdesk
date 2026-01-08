@@ -8,13 +8,14 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
-    QTableWidgetItem, QPushButton, QHeaderView
+    QTableWidgetItem, QPushButton, QHeaderView, QDialog
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from core.gh_wrapper import GHWrapper
 from core.repo_manager import RepoManager
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
+from ui.license_dialog import LicenseDialog
 
 
 class LoadReposThread(QThread):
@@ -63,24 +64,31 @@ class RepoView(QWidget):
         
         # Repository table
         self.table = QTableWidget()
-        self.table.setColumnCount(5 if self.is_local else 5)
+        self.table.setColumnCount(5 if self.is_local else 6)
         
         if self.is_local:
             headers = ["Name", "Path", "Branch", "Status", "Remote"]
         else:
-            headers = ["Name", "Owner", "Description", "Visibility", "Updated"]
+            headers = ["Name", "Owner", "Description", "Visibility", "License", "Updated"]
         
         self.table.setHorizontalHeaderLabels(headers)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        # Set uniform column widths
+        # Set uniform column widths - all Interactive so user can resize
         header = self.table.horizontalHeader()
-        for i in range(5):
+        col_count = 5 if self.is_local else 6
+        
+        for i in range(col_count):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Interactive)
+        
         self.table.setColumnWidth(0, 180)  # Name
         self.table.setColumnWidth(1, 120)  # Owner/Path
-        self.table.setColumnWidth(2, 200)  # Description/Branch
+        self.table.setColumnWidth(2, 150)  # Description/Branch
         self.table.setColumnWidth(3, 100)  # Visibility/Status
-        self.table.setColumnWidth(4, 120)  # Updated/Remote
+        if not self.is_local:
+            self.table.setColumnWidth(4, 120)  # License
+            self.table.setColumnWidth(5, 100)  # Updated
+        else:
+            self.table.setColumnWidth(4, 200)  # Remote
+        
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.clicked.connect(self.on_row_clicked)
@@ -92,6 +100,10 @@ class RepoView(QWidget):
         layout.addLayout(button_layout)
         
         if not self.is_local:
+            self.license_btn = QPushButton("Change License")
+            self.license_btn.clicked.connect(self.change_license)
+            button_layout.addWidget(self.license_btn)
+            
             self.visibility_btn = QPushButton("Change Visibility")
             self.visibility_btn.clicked.connect(self.change_visibility)
             button_layout.addWidget(self.visibility_btn)
@@ -146,7 +158,10 @@ class RepoView(QWidget):
                 is_private = repo.get("isPrivate")
                 visibility_text = "Private" if is_private else "Public"
                 
-                self.table.setItem(row, 0, QTableWidgetItem(repo.get("name", "")))
+                name_item = QTableWidgetItem(repo.get("name", ""))
+                # Store the full repo name in the item data for later retrieval
+                name_item.setData(Qt.ItemDataRole.UserRole, f"{owner}/{repo.get('name', '')}")
+                self.table.setItem(row, 0, name_item)
                 self.table.setItem(row, 1, QTableWidgetItem(owner))
                 self.table.setItem(row, 2, QTableWidgetItem(repo.get("description", "")))
                 
@@ -158,29 +173,40 @@ class RepoView(QWidget):
                     visibility_item.setForeground(Qt.GlobalColor.darkGreen)
                 self.table.setItem(row, 3, visibility_item)
                 
-                self.table.setItem(row, 4, QTableWidgetItem(repo.get("updatedAt", "")[:10]))
+                # License
+                license_info = repo.get("licenseInfo", {})
+                license_name = ""
+                if license_info and isinstance(license_info, dict):
+                    license_name = license_info.get("spdxId", "") or license_info.get("name", "")
+                    if not license_name:
+                        license_name = "-"
+                else:
+                    license_name = "-"
+                self.table.setItem(row, 4, QTableWidgetItem(license_name))
+                
+                self.table.setItem(row, 5, QTableWidgetItem(repo.get("updatedAt", "")[:10]))
         
         self.table.setSortingEnabled(True)
-        self.table.resizeColumnsToContents()
     
     def on_row_clicked(self, index):
         """Handle click on a row"""
         row = index.row()
-        if row < 0 or row >= len(self.repos):
-            return
         
-        repo = self.repos[row]
         if self.is_local:
-            # Emit the local path
+            # For local repos, use the repos list with index
+            if row < 0 or row >= len(self.repos):
+                return
+            repo = self.repos[row]
             path = repo.get("path", "")
             if path:
                 self.repo_selected.emit(path)
         else:
-            # Emit owner/name for remote repos
-            owner = repo.get("owner", {}).get("login", "") if isinstance(repo.get("owner"), dict) else ""
-            name = repo.get("name", "")
-            if owner and name:
-                self.repo_selected.emit(f"{owner}/{name}")
+            # For GitHub repos, get the full name from the table item data
+            name_item = self.table.item(row, 0)
+            if name_item:
+                repo_full_name = name_item.data(Qt.ItemDataRole.UserRole)
+                if repo_full_name:
+                    self.repo_selected.emit(repo_full_name)
     
     def delete_selected(self):
         """Delete selected repository"""
@@ -317,3 +343,47 @@ class RepoView(QWidget):
             else:
                 show_message_dialog(self, "Failed", "Failed to change visibility",
                                   result['error'])
+    
+    def change_license(self):
+        """Change license of selected repository"""
+        selected_rows = self.table.selectionModel().selectedRows()
+        
+        if not selected_rows:
+            show_message_dialog(self, "No Selection", "Please select a repository")
+            return
+        
+        row = selected_rows[0].row()
+        repo = self.repos[row]
+        owner = repo.get("owner", {}).get("login", "")
+        name = repo.get("name", "")
+        repo_full = f"{owner}/{name}"
+        
+        # Get current license
+        current_license = None
+        license_info = repo.get("licenseInfo") or {}
+        if license_info:
+            current_license = license_info.get("spdxId") or license_info.get("name")
+        
+        # Show license dialog
+        dialog = LicenseDialog(repo_full, current_license, self)
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            selected_license = dialog.get_selected_license()
+            
+            if selected_license:
+                # Apply the license
+                result = self.gh.change_license(repo_full, selected_license)
+                
+                if result.get("success"):
+                    show_message_dialog(
+                        self, "Success",
+                        f"License changed to {selected_license.upper()}",
+                        "The LICENSE file has been updated in the repository."
+                    )
+                    self.load_repos()
+                else:
+                    show_message_dialog(
+                        self, "Failed",
+                        "Failed to change license",
+                        result.get('error', 'Unknown error')
+                    )
