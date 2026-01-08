@@ -9,9 +9,10 @@ from PyQt6.QtWidgets import (
     QGroupBox, QScrollArea, QWidget, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QShowEvent
 
 from core.licenses import LICENSES, LICENSE_ORDER, get_license_by_id
+from ui.dialogs import center_dialog_on_parent
 
 
 class LicenseDialog(QDialog):
@@ -23,13 +24,22 @@ class LicenseDialog(QDialog):
         self.repo_name = repo_name
         self.current_license = current_license
         self.selected_license = None
+        self._centered = False
         
         self.init_ui()
+    
+    def showEvent(self, event: QShowEvent):
+        """Override showEvent to center dialog on parent."""
+        super().showEvent(event)
+        if not self._centered:
+            center_dialog_on_parent(self)
+            self._centered = True
     
     def init_ui(self):
         """Initialize the user interface"""
         self.setWindowTitle(f"Change License - {self.repo_name}")
         self.setModal(True)
+        self.setWindowModality(Qt.WindowModality.WindowModal)
         self.resize(800, 550)
         
         layout = QVBoxLayout()

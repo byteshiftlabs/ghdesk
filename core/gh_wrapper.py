@@ -117,7 +117,7 @@ class GHWrapper:
             List of repository dicts
         """
         result = self._run_command(
-            ["repo", "list", "--json", "name,owner,description,url,isPrivate,updatedAt", 
+            ["repo", "list", "--json", "name,owner,description,url,isPrivate,updatedAt,licenseInfo", 
              "--limit", str(limit)],
             capture_json=True
         )

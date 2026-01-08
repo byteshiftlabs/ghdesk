@@ -5,13 +5,14 @@ Create repository dialog
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QTextEdit, QCheckBox, QPushButton,
-    QLabel, QFileDialog
+    QLabel, QMessageBox, QFileDialog
 )
 from PyQt6.QtCore import Qt
 from pathlib import Path
 
 from core.gh_wrapper import GHWrapper
-from ui.dialogs import show_message_dialog
+from ui.dialogs import show_message_dialog, center_dialog_on_parent
+from PyQt6.QtGui import QShowEvent
 
 
 class CreateRepoDialog(QDialog):
@@ -21,12 +22,21 @@ class CreateRepoDialog(QDialog):
         super().__init__(parent)
         
         self.gh = gh
+        self._centered = False
         self.init_ui()
+    
+    def showEvent(self, event: QShowEvent):
+        """Override showEvent to center dialog on parent."""
+        super().showEvent(event)
+        if not self._centered:
+            center_dialog_on_parent(self)
+            self._centered = True
     
     def init_ui(self):
         """Initialize the user interface"""
         self.setWindowTitle("Create Repository")
         self.setModal(True)
+        self.setWindowModality(Qt.WindowModality.WindowModal)
         self.resize(500, 400)
         
         layout = QVBoxLayout()
@@ -106,7 +116,7 @@ class CreateRepoDialog(QDialog):
         name = self.name_edit.text().strip()
         
         if not name:
-            show_message_dialog(self, "Invalid Input", "Please enter a repository name")
+            show_message_dialog(self, "Invalid Input", "Please enter a repository name", msg_type="warning")
             return
         
         description = self.desc_edit.toPlainText().strip()
@@ -135,6 +145,7 @@ class CreateRepoDialog(QDialog):
             self.accept()
         else:
             show_message_dialog(
-                self, "Creation Failed", "Failed to create repository",
-                result['error']
+                self, "Creation Failed",
+                f"Failed to create repository:\n{result['error']}",
+                msg_type="warning"
             )
