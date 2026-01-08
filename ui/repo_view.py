@@ -8,13 +8,14 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
-    QTableWidgetItem, QPushButton, QHeaderView
+    QTableWidgetItem, QPushButton, QHeaderView, QDialog
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from core.gh_wrapper import GHWrapper
 from core.repo_manager import RepoManager
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
+from ui.license_dialog import LicenseDialog
 
 
 class LoadReposThread(QThread):
@@ -92,6 +93,10 @@ class RepoView(QWidget):
         layout.addLayout(button_layout)
         
         if not self.is_local:
+            self.license_btn = QPushButton("Change License")
+            self.license_btn.clicked.connect(self.change_license)
+            button_layout.addWidget(self.license_btn)
+            
             self.visibility_btn = QPushButton("Change Visibility")
             self.visibility_btn.clicked.connect(self.change_visibility)
             button_layout.addWidget(self.visibility_btn)
@@ -317,3 +322,47 @@ class RepoView(QWidget):
             else:
                 show_message_dialog(self, "Failed", "Failed to change visibility",
                                   result['error'])
+    
+    def change_license(self):
+        """Change license of selected repository"""
+        selected_rows = self.table.selectionModel().selectedRows()
+        
+        if not selected_rows:
+            show_message_dialog(self, "No Selection", "Please select a repository")
+            return
+        
+        row = selected_rows[0].row()
+        repo = self.repos[row]
+        owner = repo.get("owner", {}).get("login", "")
+        name = repo.get("name", "")
+        repo_full = f"{owner}/{name}"
+        
+        # Get current license
+        current_license = None
+        license_info = repo.get("licenseInfo") or {}
+        if license_info:
+            current_license = license_info.get("spdxId") or license_info.get("name")
+        
+        # Show license dialog
+        dialog = LicenseDialog(repo_full, current_license, self)
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            selected_license = dialog.get_selected_license()
+            
+            if selected_license:
+                # Apply the license
+                result = self.gh.change_license(repo_full, selected_license)
+                
+                if result.get("success"):
+                    show_message_dialog(
+                        self, "Success",
+                        f"License changed to {selected_license.upper()}",
+                        "The LICENSE file has been updated in the repository."
+                    )
+                    self.load_repos()
+                else:
+                    show_message_dialog(
+                        self, "Failed",
+                        "Failed to change license",
+                        result.get('error', 'Unknown error')
+                    )
