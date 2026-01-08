@@ -869,3 +869,128 @@ class GHWrapper:
         args = ["pr", "checks", str(pr_number), "--repo", repo]
         result = self._run_command(args)
         return result
+    
+    def get_repo_collaborators(self, repo: str) -> Dict[str, Any]:
+        """
+        Get list of collaborators for a repository.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            
+        Returns:
+            Dict with list of collaborators
+        """
+        args = ["api", f"repos/{repo}/collaborators", "--paginate"]
+        result = self._run_command(args, capture_json=True)
+        return result
+    
+    def get_repo_labels(self, repo: str) -> Dict[str, Any]:
+        """
+        Get list of labels defined in a repository.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            
+        Returns:
+            Dict with list of labels
+        """
+        args = ["api", f"repos/{repo}/labels", "--paginate"]
+        result = self._run_command(args, capture_json=True)
+        return result
+    
+    def add_pr_assignees(self, repo: str, pr_number: int, 
+                         assignees: List[str]) -> Dict[str, Any]:
+        """
+        Add assignees to a pull request.
+        Uses the Issues API since PRs are issues in GitHub's API.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            assignees: List of usernames to assign
+            
+        Returns:
+            Dict with result
+        """
+        import json
+        # Use the Issues API to add assignees (PRs are issues)
+        payload = json.dumps({"assignees": assignees})
+        args = ["api", f"repos/{repo}/issues/{pr_number}", 
+                "-X", "PATCH",
+                "--input", "-"]
+        
+        result = self._run_command(args, capture_json=True, input_data=payload)
+        return result
+    
+    def add_pr_labels(self, repo: str, pr_number: int, 
+                      labels: List[str]) -> Dict[str, Any]:
+        """
+        Add labels to a pull request.
+        Uses the Issues API since PRs are issues in GitHub's API.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            labels: List of label names to add
+            
+        Returns:
+            Dict with result
+        """
+        import json
+        # Use the Issues API to add labels (PRs are issues)
+        payload = json.dumps({"labels": labels})
+        args = ["api", f"repos/{repo}/issues/{pr_number}/labels",
+                "-X", "POST",
+                "--input", "-"]
+        
+        result = self._run_command(args, capture_json=True, input_data=payload)
+        return result
+    
+    def remove_pr_assignees(self, repo: str, pr_number: int, 
+                            assignees: List[str]) -> Dict[str, Any]:
+        """
+        Remove assignees from a pull request.
+        Uses the Issues API since PRs are issues in GitHub's API.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            assignees: List of usernames to remove
+            
+        Returns:
+            Dict with result
+        """
+        import json
+        # Use the Issues API to remove assignees (PRs are issues)
+        payload = json.dumps({"assignees": assignees})
+        args = ["api", f"repos/{repo}/issues/{pr_number}/assignees",
+                "-X", "DELETE",
+                "--input", "-"]
+        
+        result = self._run_command(args, capture_json=True, input_data=payload)
+        return result
+    
+    def remove_pr_labels(self, repo: str, pr_number: int, 
+                         labels: List[str]) -> Dict[str, Any]:
+        """
+        Remove labels from a pull request.
+        Uses the Issues API since PRs are issues in GitHub's API.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            labels: List of label names to remove
+            
+        Returns:
+            Dict with result
+        """
+        # Use the Issues API to remove labels (PRs are issues)
+        # Remove labels one by one
+        for label in labels:
+            args = ["api", f"repos/{repo}/issues/{pr_number}/labels/{label}",
+                    "-X", "DELETE"]
+            result = self._run_command(args, capture_json=True)
+            if not result["success"]:
+                return result
+        
+        return {"success": True, "output": "Labels removed"}

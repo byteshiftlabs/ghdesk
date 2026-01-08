@@ -154,7 +154,10 @@ class RepoView(QWidget):
         
         for row, repo in enumerate(repos):
             if self.is_local:
-                self.table.setItem(row, 0, QTableWidgetItem(repo.get("name", "")))
+                name_item = QTableWidgetItem(repo.get("name", ""))
+                # Store the path in UserRole so it survives sorting
+                name_item.setData(Qt.ItemDataRole.UserRole, repo.get("path", ""))
+                self.table.setItem(row, 0, name_item)
                 self.table.setItem(row, 1, QTableWidgetItem(repo.get("path", "")))
                 self.table.setItem(row, 2, QTableWidgetItem(repo.get("branch", "")))
                 self.table.setItem(row, 3, QTableWidgetItem(repo.get("status", "")))
@@ -198,21 +201,22 @@ class RepoView(QWidget):
         """Handle click on a row"""
         row = index.row()
         
+        # Get data from the table item instead of using row index into self.repos
+        # This ensures sorting doesn't break the selection
+        name_item = self.table.item(row, 0)
+        if not name_item:
+            return
+        
         if self.is_local:
-            # For local repos, use the repos list with index
-            if row < 0 or row >= len(self.repos):
-                return
-            repo = self.repos[row]
-            path = repo.get("path", "")
+            # For local repos, get the path from UserRole
+            path = name_item.data(Qt.ItemDataRole.UserRole)
             if path:
                 self.repo_selected.emit(path)
         else:
             # For GitHub repos, get the full name from the table item data
-            name_item = self.table.item(row, 0)
-            if name_item:
-                repo_full_name = name_item.data(Qt.ItemDataRole.UserRole)
-                if repo_full_name:
-                    self.repo_selected.emit(repo_full_name)
+            repo_full_name = name_item.data(Qt.ItemDataRole.UserRole)
+            if repo_full_name:
+                self.repo_selected.emit(repo_full_name)
     
     def delete_selected(self):
         """Delete selected repository"""
@@ -223,7 +227,28 @@ class RepoView(QWidget):
             return
         
         row = selected_rows[0].row()
-        repo = self.repos[row]
+        
+        # Get repo info from table item UserRole
+        name_item = self.table.item(row, 0)
+        if not name_item:
+            return
+        
+        repo_full_name = name_item.data(Qt.ItemDataRole.UserRole)
+        if not repo_full_name:
+            return
+        
+        # Find the repo in self.repos to get full details
+        repo = None
+        for r in self.repos:
+            owner = r.get("owner", {}).get("login", "")
+            name = r.get("name", "")
+            if f"{owner}/{name}" == repo_full_name:
+                repo = r
+                break
+        
+        if not repo:
+            return
+        
         owner = repo.get("owner", {}).get("login", "")
         name = repo.get("name", "")
         repo_full = f"{owner}/{name}"
@@ -289,10 +314,19 @@ class RepoView(QWidget):
             return
         
         row = selected_rows[0].row()
-        repo = self.repos[row]
-        owner = repo.get("owner", {}).get("login", "")
-        name = repo.get("name", "")
-        repo_full = f"{owner}/{name}"
+        
+        # Get repo full name from table item
+        name_item = self.table.item(row, 0)
+        if not name_item:
+            return
+        
+        repo_full_name = name_item.data(Qt.ItemDataRole.UserRole)
+        if not repo_full_name:
+            return
+        
+        # Extract name from full name (owner/name)
+        name = repo_full_name.split("/")[-1]
+        repo_full = repo_full_name
         
         from PyQt6.QtWidgets import QFileDialog
         
@@ -320,10 +354,29 @@ class RepoView(QWidget):
             return
         
         row = selected_rows[0].row()
-        repo = self.repos[row]
-        owner = repo.get("owner", {}).get("login", "")
-        name = repo.get("name", "")
-        repo_full = f"{owner}/{name}"
+        
+        # Get repo full name from table item
+        name_item = self.table.item(row, 0)
+        if not name_item:
+            return
+        
+        repo_full_name = name_item.data(Qt.ItemDataRole.UserRole)
+        if not repo_full_name:
+            return
+        
+        # Find the repo in self.repos to get full details
+        repo = None
+        for r in self.repos:
+            owner = r.get("owner", {}).get("login", "")
+            name = r.get("name", "")
+            if f"{owner}/{name}" == repo_full_name:
+                repo = r
+                break
+        
+        if not repo:
+            return
+        
+        repo_full = repo_full_name
         is_private = repo.get("isPrivate", False)
         
         # Ask for new visibility
@@ -359,10 +412,29 @@ class RepoView(QWidget):
             return
         
         row = selected_rows[0].row()
-        repo = self.repos[row]
-        owner = repo.get("owner", {}).get("login", "")
-        name = repo.get("name", "")
-        repo_full = f"{owner}/{name}"
+        
+        # Get repo full name from table item
+        name_item = self.table.item(row, 0)
+        if not name_item:
+            return
+        
+        repo_full_name = name_item.data(Qt.ItemDataRole.UserRole)
+        if not repo_full_name:
+            return
+        
+        # Find the repo in self.repos to get full details
+        repo = None
+        for r in self.repos:
+            owner = r.get("owner", {}).get("login", "")
+            name = r.get("name", "")
+            if f"{owner}/{name}" == repo_full_name:
+                repo = r
+                break
+        
+        if not repo:
+            return
+        
+        repo_full = repo_full_name
         
         # Get current license
         current_license = None

@@ -5,10 +5,11 @@ Shows detailed information about a specific pull request
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTextEdit, QScrollArea, QFrame, QComboBox, QGroupBox, QSplitter
+    QTextEdit, QScrollArea, QFrame, QComboBox, QGroupBox, QSplitter,
+    QListWidget, QListWidgetItem, QDialog, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QColor, QBrush
 from datetime import datetime
 from typing import Optional, Dict, Any
 
@@ -21,11 +22,12 @@ class PRDetailView(QWidget):
     
     pr_updated = pyqtSignal()  # Emitted when PR is modified
     
-    def __init__(self, gh: GHWrapper, repo_name: str, parent=None):
+    def __init__(self, gh: GHWrapper, repo_name: str, is_local: bool = False, parent=None):
         super().__init__(parent)
         
         self.gh = gh
         self.repo_name = repo_name
+        self.is_local = is_local
         self.pr_number = None
         self.pr_data = None
         
@@ -104,6 +106,10 @@ class PRDetailView(QWidget):
         # Status section
         status = self.create_status_section()
         self.content_layout.addWidget(status)
+        
+        # Metadata section (assignees and labels)
+        metadata = self.create_metadata_section()
+        self.content_layout.addWidget(metadata)
         
         # Body section
         body_widget = self.create_body_section()
@@ -204,6 +210,103 @@ class PRDetailView(QWidget):
         )
         mergeable_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(mergeable_label)
+        
+        return group
+    
+    def create_metadata_section(self) -> QGroupBox:
+        """Create metadata section (assignees and labels)"""
+        group = QGroupBox("Metadata")
+        layout = QVBoxLayout()
+        group.setLayout(layout)
+        
+        # Assignees section
+        assignees_layout = QHBoxLayout()
+        layout.addLayout(assignees_layout)
+        
+        assignees_label = QLabel("<b>Assignees:</b>")
+        assignees_label.setTextFormat(Qt.TextFormat.RichText)
+        assignees_layout.addWidget(assignees_label)
+        
+        assignees = self.pr_data.get("assignees", [])
+        if isinstance(assignees, dict):
+            assignees = assignees.get("nodes", [])
+        if assignees:
+            assignee_names = ", ".join([a.get("login", "") for a in assignees])
+            assignees_text = QLabel(assignee_names)
+        else:
+            assignees_text = QLabel("<i>No assignees</i>")
+            assignees_text.setStyleSheet("color: #888;")
+        assignees_text.setTextFormat(Qt.TextFormat.RichText)
+        assignees_layout.addWidget(assignees_text)
+        assignees_layout.addStretch()
+        
+        # Only show manage button for local repositories
+        if self.is_local:
+            manage_assignees_btn = QPushButton("Manage Assignees")
+            manage_assignees_btn.clicked.connect(self.manage_assignees)
+            assignees_layout.addWidget(manage_assignees_btn)
+        
+        # Labels section
+        labels_layout = QHBoxLayout()
+        layout.addLayout(labels_layout)
+        
+        labels_label = QLabel("<b>Labels:</b>")
+        labels_label.setTextFormat(Qt.TextFormat.RichText)
+        labels_layout.addWidget(labels_label)
+        
+        labels = self.pr_data.get("labels", [])
+        if isinstance(labels, dict):
+            labels = labels.get("nodes", [])
+        if labels:
+            labels_widget = QWidget()
+            labels_inner_layout = QHBoxLayout()
+            labels_inner_layout.setContentsMargins(0, 0, 0, 0)
+            labels_inner_layout.setSpacing(4)
+            labels_widget.setLayout(labels_inner_layout)
+            
+            for label in labels[:5]:  # Show max 5 labels
+                label_name = label.get("name", "")
+                label_color = label.get("color", "")
+                label_btn = QPushButton(label_name)
+                if label_color:
+                    # Calculate brightness to determine text color
+                    color = QColor(f"#{label_color}")
+                    brightness = (color.red() * 299 + color.green() * 587 + color.blue() * 114) / 1000
+                    text_color = "white" if brightness < 128 else "black"
+                    label_btn.setStyleSheet(
+                        f"background-color: #{label_color}; "
+                        f"color: {text_color}; "
+                        f"border: none; "
+                        f"padding: 2px 8px; "
+                        f"border-radius: 3px; "
+                        f"font-size: 11px;"
+                    )
+                else:
+                    label_btn.setStyleSheet(
+                        f"background-color: #e1e4e8; "
+                        f"color: black; "
+                        f"border: none; "
+                        f"padding: 2px 8px; "
+                        f"border-radius: 3px; "
+                        f"font-size: 11px;"
+                    )
+                label_btn.setMaximumHeight(20)
+                labels_inner_layout.addWidget(label_btn)
+            
+            labels_layout.addWidget(labels_widget)
+        else:
+            labels_text = QLabel("<i>No labels</i>")
+            labels_text.setTextFormat(Qt.TextFormat.RichText)
+            labels_text.setStyleSheet("color: #888;")
+            labels_layout.addWidget(labels_text)
+        
+        labels_layout.addStretch()
+        
+        # Only show manage button for local repositories
+        if self.is_local:
+            manage_labels_btn = QPushButton("Manage Labels")
+            manage_labels_btn.clicked.connect(self.manage_labels)
+            labels_layout.addWidget(manage_labels_btn)
         
         return group
     
@@ -438,3 +541,304 @@ class PRDetailView(QWidget):
             return dt.strftime("%b %d, %Y")
         except:
             return date_str
+    
+    def manage_assignees(self):
+        """Manage assignees for the PR"""
+        dialog = AssigneeDialog(
+            self.gh,
+            self.repo_name,
+            self.pr_number,
+            self.pr_data,
+            self
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.pr_updated.emit()
+            self.load_pr(self.pr_number)
+    
+    def manage_labels(self):
+        """Manage labels for the PR"""
+        dialog = LabelDialog(
+            self.gh,
+            self.repo_name,
+            self.pr_number,
+            self.pr_data,
+            self
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.pr_updated.emit()
+            self.load_pr(self.pr_number)
+
+
+class AssigneeDialog(QDialog):
+    """Dialog for managing PR assignees"""
+    
+    def __init__(self, gh: GHWrapper, repo_name: str, pr_number: int,
+                 pr_data: Dict[str, Any], parent=None):
+        super().__init__(parent)
+        self.gh = gh
+        self.repo_name = repo_name
+        self.pr_number = pr_number
+        self.pr_data = pr_data
+        
+        self.setWindowTitle(f"Manage Assignees - PR #{pr_number}")
+        self.setModal(True)
+        self.resize(450, 400)
+        
+        self.init_ui()
+        self.load_data()
+    
+    def init_ui(self):
+        """Initialize UI"""
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        
+        # Info label
+        info = QLabel("Select or deselect assignees for this pull request:")
+        layout.addWidget(info)
+        
+        # List widget
+        self.list_widget = QListWidget()
+        self.list_widget.setSelectionMode(
+            QListWidget.SelectionMode.MultiSelection
+        )
+        layout.addWidget(self.list_widget)
+        
+        # Buttons
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok |
+            QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.save_assignees)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+    
+    def load_data(self):
+        """Load collaborators and current assignees"""
+        # Get current assignees
+        current_assignees = set()
+        assignees = self.pr_data.get("assignees", [])
+        if isinstance(assignees, dict):
+            assignees = assignees.get("nodes", [])
+        for assignee in assignees:
+            login = assignee.get("login", "")
+            if login:
+                current_assignees.add(login)
+        
+        # Get all collaborators
+        result = self.gh.get_repo_collaborators(self.repo_name)
+        if result["success"] and result.get("output"):
+            for collab in result["output"]:
+                login = collab.get("login", "")
+                if login:
+                    item = QListWidgetItem(login)
+                    self.list_widget.addItem(item)
+                    if login in current_assignees:
+                        item.setSelected(True)
+    
+    def save_assignees(self):
+        """Save assignee changes"""
+        # Get current and new selections
+        current_assignees = set()
+        assignees = self.pr_data.get("assignees", [])
+        if isinstance(assignees, dict):
+            assignees = assignees.get("nodes", [])
+        for assignee in assignees:
+            login = assignee.get("login", "")
+            if login:
+                current_assignees.add(login)
+        
+        selected_assignees = set()
+        for item in self.list_widget.selectedItems():
+            selected_assignees.add(item.text())
+        
+        # Calculate additions and removals
+        to_add = list(selected_assignees - current_assignees)
+        to_remove = list(current_assignees - selected_assignees)
+        
+        success = True
+        
+        # Add new assignees
+        if to_add:
+            result = self.gh.add_pr_assignees(
+                self.repo_name,
+                self.pr_number,
+                to_add
+            )
+            if not result["success"]:
+                show_message_dialog(
+                    self,
+                    "Error",
+                    f"Failed to add assignees:\n{result['error']}",
+                    msg_type="error"
+                )
+                success = False
+        
+        # Remove assignees
+        if to_remove:
+            result = self.gh.remove_pr_assignees(
+                self.repo_name,
+                self.pr_number,
+                to_remove
+            )
+            if not result["success"]:
+                show_message_dialog(
+                    self,
+                    "Error",
+                    f"Failed to remove assignees:\n{result['error']}",
+                    msg_type="error"
+                )
+                success = False
+        
+        if success:
+            if to_add or to_remove:
+                show_message_dialog(
+                    self,
+                    "Success",
+                    "Assignees updated successfully!"
+                )
+            self.accept()
+
+
+class LabelDialog(QDialog):
+    """Dialog for managing PR labels"""
+    
+    def __init__(self, gh: GHWrapper, repo_name: str, pr_number: int,
+                 pr_data: Dict[str, Any], parent=None):
+        super().__init__(parent)
+        self.gh = gh
+        self.repo_name = repo_name
+        self.pr_number = pr_number
+        self.pr_data = pr_data
+        
+        self.setWindowTitle(f"Manage Labels - PR #{pr_number}")
+        self.setModal(True)
+        self.resize(450, 400)
+        
+        self.init_ui()
+        self.load_data()
+    
+    def init_ui(self):
+        """Initialize UI"""
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        
+        # Info label
+        info = QLabel("Select or deselect labels for this pull request:")
+        layout.addWidget(info)
+        
+        # List widget
+        self.list_widget = QListWidget()
+        self.list_widget.setSelectionMode(
+            QListWidget.SelectionMode.MultiSelection
+        )
+        layout.addWidget(self.list_widget)
+        
+        # Buttons
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok |
+            QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.save_labels)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+    
+    def load_data(self):
+        """Load repo labels and current PR labels"""
+        # Get current labels
+        current_labels = set()
+        labels = self.pr_data.get("labels", [])
+        if isinstance(labels, dict):
+            labels = labels.get("nodes", [])
+        for label in labels:
+            name = label.get("name", "")
+            if name:
+                current_labels.add(name)
+        
+        # Get all repo labels
+        result = self.gh.get_repo_labels(self.repo_name)
+        if result["success"] and result.get("output"):
+            for label in result["output"]:
+                name = label.get("name", "")
+                if name:
+                    color = label.get("color", "")
+                    # Create item with label name and color description
+                    display_text = f"{name}"
+                    if color:
+                        display_text = f"⬤ {name}"  # Add colored circle
+                    item = QListWidgetItem(display_text)
+                    
+                    # Set color using QColor and QBrush
+                    if color:
+                        bg_color = QColor(f"#{color}")
+                        # Calculate brightness to determine text color
+                        brightness = (bg_color.red() * 299 + bg_color.green() * 587 + bg_color.blue() * 114) / 1000
+                        text_color = QColor("white") if brightness < 128 else QColor("black")
+                        item.setForeground(QBrush(text_color))
+                        item.setBackground(QBrush(bg_color))
+                    
+                    self.list_widget.addItem(item)
+                    if name in current_labels:
+                        item.setSelected(True)
+    
+    def save_labels(self):
+        """Save label changes"""
+        # Get current and new selections
+        current_labels = set()
+        labels = self.pr_data.get("labels", [])
+        if isinstance(labels, dict):
+            labels = labels.get("nodes", [])
+        for label in labels:
+            name = label.get("name", "")
+            if name:
+                current_labels.add(name)
+        
+        selected_labels = set()
+        for item in self.list_widget.selectedItems():
+            selected_labels.add(item.text())
+        
+        # Calculate additions and removals
+        to_add = list(selected_labels - current_labels)
+        to_remove = list(current_labels - selected_labels)
+        
+        success = True
+        
+        # Add new labels
+        if to_add:
+            result = self.gh.add_pr_labels(
+                self.repo_name,
+                self.pr_number,
+                to_add
+            )
+            if not result["success"]:
+                show_message_dialog(
+                    self,
+                    "Error",
+                    f"Failed to add labels:\n{result['error']}",
+                    msg_type="error"
+                )
+                success = False
+        
+        # Remove labels
+        if to_remove:
+            result = self.gh.remove_pr_labels(
+                self.repo_name,
+                self.pr_number,
+                to_remove
+            )
+            if not result["success"]:
+                show_message_dialog(
+                    self,
+                    "Error",
+                    f"Failed to remove labels:\n{result['error']}",
+                    msg_type="error"
+                )
+                success = False
+        
+        if success:
+            if to_add or to_remove:
+                show_message_dialog(
+                    self,
+                    "Success",
+                    "Labels updated successfully!"
+                )
+            self.accept()

@@ -5,7 +5,7 @@ Create Pull Request dialog
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QTextEdit, QCheckBox, QPushButton,
-    QLabel, QComboBox
+    QLabel, QComboBox, QListWidget, QListWidgetItem
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QShowEvent
@@ -27,6 +27,8 @@ class CreatePRDialog(QDialog):
         self.gh = gh
         self.repo = None
         self._centered = False
+        self.collaborators = []
+        self.labels = []
         
         try:
             self.repo = git.Repo(repo_path)
@@ -39,6 +41,9 @@ class CreatePRDialog(QDialog):
             )
             return
         
+        # Load collaborators and labels
+        self.load_repo_data()
+        
         self.init_ui()
     
     def showEvent(self, event: QShowEvent):
@@ -48,12 +53,24 @@ class CreatePRDialog(QDialog):
             center_dialog_on_parent(self)
             self._centered = True
     
+    def load_repo_data(self):
+        """Load collaborators and labels from repository"""
+        # Load collaborators
+        collab_result = self.gh.get_repo_collaborators(self.repo_name)
+        if collab_result["success"] and collab_result.get("output"):
+            self.collaborators = collab_result["output"]
+        
+        # Load labels
+        labels_result = self.gh.get_repo_labels(self.repo_name)
+        if labels_result["success"] and labels_result.get("output"):
+            self.labels = labels_result["output"]
+    
     def init_ui(self):
         """Initialize the user interface"""
         self.setWindowTitle("Create Pull Request")
         self.setModal(True)
         self.setWindowModality(Qt.WindowModality.WindowModal)
-        self.resize(600, 450)
+        self.resize(700, 600)
         
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -131,10 +148,43 @@ class CreatePRDialog(QDialog):
         )
         form.addRow("", self.draft_check)
         
+        # Assignees
+        assignees_label = QLabel("Assignees:")
+        self.assignees_list = QListWidget()
+        self.assignees_list.setMaximumHeight(100)
+        self.assignees_list.setSelectionMode(
+            QListWidget.SelectionMode.MultiSelection
+        )
+        for collab in self.collaborators:
+            login = collab.get("login", "")
+            if login:
+                item = QListWidgetItem(login)
+                self.assignees_list.addItem(item)
+        form.addRow(assignees_label, self.assignees_list)
+        
+        # Labels
+        labels_label = QLabel("Labels:")
+        self.labels_list = QListWidget()
+        self.labels_list.setMaximumHeight(100)
+        self.labels_list.setSelectionMode(
+            QListWidget.SelectionMode.MultiSelection
+        )
+        for label in self.labels:
+            label_name = label.get("name", "")
+            if label_name:
+                item = QListWidgetItem(label_name)
+                # Set color indicator
+                color = label.get("color", "")
+                if color:
+                    item.setForeground(Qt.GlobalColor.white)
+                    item.setBackground(Qt.GlobalColor.fromString(f"#{color}"))
+                self.labels_list.addItem(item)
+        form.addRow(labels_label, self.labels_list)
+        
         # Info label
         info_label = QLabel(
-            "💡 After creation, you can add reviewers, labels, "
-            "and assignees on GitHub."
+            "💡 Select assignees and labels for this pull request. "
+            "You can also add reviewers after creation on GitHub."
         )
         info_label.setWordWrap(True)
         info_label.setStyleSheet("color: #666; font-size: 11px; padding: 10px;")
@@ -202,6 +252,14 @@ class CreatePRDialog(QDialog):
             )
             return
         
+        # Get selected assignees and labels
+        selected_assignees = [
+            item.text() for item in self.assignees_list.selectedItems()
+        ]
+        selected_labels = [
+            item.text() for item in self.labels_list.selectedItems()
+        ]
+        
         # Create PR
         self.create_btn.setEnabled(False)
         self.create_btn.setText("Creating...")
@@ -215,17 +273,46 @@ class CreatePRDialog(QDialog):
             draft=draft
         )
         
-        self.create_btn.setEnabled(True)
-        self.create_btn.setText("Create Pull Request")
-        
         if result["success"]:
+            # Extract PR number from output
+            pr_number = None
+            output = result.get("output", "")
+            # Parse URL like https://github.com/owner/repo/pull/123
+            if "/pull/" in output:
+                try:
+                    pr_number = output.split("/pull/")[-1].split()[0].strip()
+                except:
+                    pass
+            
+            # Add assignees if PR created successfully
+            if pr_number and selected_assignees:
+                assignee_result = self.gh.add_pr_assignees(
+                    self.repo_name, pr_number, selected_assignees
+                )
+                if not assignee_result["success"]:
+                    print(f"Warning: Failed to add assignees: {assignee_result['error']}")
+            
+            # Add labels if PR created successfully
+            if pr_number and selected_labels:
+                label_result = self.gh.add_pr_labels(
+                    self.repo_name, pr_number, selected_labels
+                )
+                if not label_result["success"]:
+                    print(f"Warning: Failed to add labels: {label_result['error']}")
+            
+            self.create_btn.setEnabled(True)
+            self.create_btn.setText("Create Pull Request")
+            
             show_message_dialog(
                 self,
                 "Success",
-                f"Pull request created successfully!\n\n{result.get('output', '')}"
+                f"Pull request created successfully!\n\n{output}"
             )
             self.accept()
         else:
+            self.create_btn.setEnabled(True)
+            self.create_btn.setText("Create Pull Request")
+            
             show_message_dialog(
                 self,
                 "Creation Failed",

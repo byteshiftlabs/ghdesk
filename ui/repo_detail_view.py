@@ -9,10 +9,11 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel,
     QTableWidget, QTableWidgetItem, QTextEdit, QPushButton,
     QHeaderView, QGroupBox, QFormLayout, QFrame, QScrollArea,
-    QInputDialog, QLineEdit, QDialog, QDialogButtonBox
+    QInputDialog, QLineEdit, QDialog, QDialogButtonBox, QSplitter,
+    QListWidget, QListWidgetItem, QCheckBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QRect, QPoint
-from PyQt6.QtGui import QFont, QCursor
+from PyQt6.QtGui import QFont, QCursor, QColor
 import git
 
 from core.gh_wrapper import GHWrapper
@@ -20,6 +21,7 @@ from ui.dialogs import show_message_dialog, show_confirmation_dialog
 from ui.pr_list_widget import PRListWidget
 from ui.pr_detail_view import PRDetailView
 from ui.pr_create_dialog import CreatePRDialog
+from ui.commit_push_dialog import CommitPushDialog
 
 
 class LoadRepoDetailsThread(QThread):
@@ -303,39 +305,88 @@ class RepoDetailView(QWidget):
         """Create the status tab"""
         widget = QWidget()
         layout = QVBoxLayout()
+        layout.setSpacing(5)
         widget.setLayout(layout)
         
-        # Modified files
-        modified_group = QGroupBox("Modified Files")
-        modified_layout = QVBoxLayout()
-        modified_group.setLayout(modified_layout)
-        self.modified_list = QTextEdit()
-        self.modified_list.setReadOnly(True)
-        self.modified_list.setMaximumHeight(150)
-        modified_layout.addWidget(self.modified_list)
-        layout.addWidget(modified_group)
+        # Commit message section
+        commit_layout = QVBoxLayout()
         
-        # Staged files
-        staged_group = QGroupBox("Staged Files")
-        staged_layout = QVBoxLayout()
-        staged_group.setLayout(staged_layout)
-        self.staged_list = QTextEdit()
-        self.staged_list.setReadOnly(True)
-        self.staged_list.setMaximumHeight(150)
-        staged_layout.addWidget(self.staged_list)
-        layout.addWidget(staged_group)
+        self.commit_message_input = QTextEdit()
+        self.commit_message_input.setMaximumHeight(40)
+        self.commit_message_input.setPlaceholderText("Enter commit message...")
+        commit_layout.addWidget(self.commit_message_input)
         
-        # Untracked files
-        untracked_group = QGroupBox("Untracked Files")
-        untracked_layout = QVBoxLayout()
-        untracked_group.setLayout(untracked_layout)
-        self.untracked_list = QTextEdit()
-        self.untracked_list.setReadOnly(True)
-        self.untracked_list.setMaximumHeight(150)
-        untracked_layout.addWidget(self.untracked_list)
-        layout.addWidget(untracked_group)
+        # Action buttons
+        button_layout = QHBoxLayout()
         
-        layout.addStretch()
+        self.stage_all_check = QCheckBox("Stage all files")
+        self.stage_all_check.setChecked(False)
+        self.stage_all_check.setToolTip("Stage all modified files (ignores selection)")
+        button_layout.addWidget(self.stage_all_check)
+        
+        select_all_btn = QPushButton("Select All")
+        select_all_btn.clicked.connect(self.select_all_status_files)
+        button_layout.addWidget(select_all_btn)
+        
+        deselect_all_btn = QPushButton("Deselect All")
+        deselect_all_btn.clicked.connect(self.deselect_all_status_files)
+        button_layout.addWidget(deselect_all_btn)
+        
+        button_layout.addStretch()
+        
+        self.refresh_status_btn = QPushButton("🔄 Refresh")
+        self.refresh_status_btn.clicked.connect(self.refresh_status)
+        button_layout.addWidget(self.refresh_status_btn)
+        
+        self.commit_btn = QPushButton("💾 Commit")
+        self.commit_btn.clicked.connect(self.commit_changes)
+        button_layout.addWidget(self.commit_btn)
+        
+        self.push_btn = QPushButton("⬆️ Push")
+        self.push_btn.clicked.connect(self.push_changes)
+        button_layout.addWidget(self.push_btn)
+        
+        commit_layout.addLayout(button_layout)
+        layout.addLayout(commit_layout)
+        
+        # Splitter for files and diff
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        layout.addWidget(splitter)
+        
+        # Left side - File list
+        left_widget = QWidget()
+        left_layout = QVBoxLayout()
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_widget.setLayout(left_layout)
+        
+        left_label = QLabel("Changed Files")
+        left_label.setStyleSheet("font-weight: bold; padding: 5px;")
+        left_layout.addWidget(left_label)
+        
+        self.status_file_list = QListWidget()
+        self.status_file_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self.status_file_list.itemClicked.connect(self.on_status_file_selected)
+        left_layout.addWidget(self.status_file_list)
+        
+        splitter.addWidget(left_widget)
+        
+        # Right side - Diff viewer
+        right_widget = QWidget()
+        right_layout = QVBoxLayout()
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_widget.setLayout(right_layout)
+        
+        right_label = QLabel("Diff Preview")
+        right_label.setStyleSheet("font-weight: bold; padding: 5px;")
+        right_layout.addWidget(right_label)
+        
+        self.status_diff_viewer = QTextEdit()
+        self.status_diff_viewer.setReadOnly(True)
+        self.status_diff_viewer.setFont(QFont("Monospace", 9))
+        right_layout.addWidget(self.status_diff_viewer)
+        
+        splitter.addWidget(right_widget)
+        splitter.setSizes([300, 700])
         
         return widget
     
@@ -468,6 +519,226 @@ class RepoDetailView(QWidget):
             if self.pr_list_widget:
                 self.pr_list_widget.load_prs()
     
+    def load_status_files(self):
+        """Load modified files into status file list"""
+        if not self.current_path:
+            return
+        
+        try:
+            repo = git.Repo(self.current_path)
+            self.status_file_list.clear()
+            
+            # Get modified files
+            modified = [item.a_path for item in repo.index.diff(None)]
+            staged = [item.a_path for item in repo.index.diff("HEAD")] if not repo.head.is_detached else []
+            untracked = repo.untracked_files
+            
+            # Add modified files
+            for file_path in modified:
+                item = QListWidgetItem(f"🔸 {file_path} (modified)")
+                item.setData(Qt.ItemDataRole.UserRole, {"path": file_path, "type": "modified"})
+                self.status_file_list.addItem(item)
+            
+            # Add staged files
+            for file_path in staged:
+                if file_path not in modified:
+                    item = QListWidgetItem(f"✅ {file_path} (staged)")
+                    item.setData(Qt.ItemDataRole.UserRole, {"path": file_path, "type": "staged"})
+                    item.setForeground(QColor("#28a745"))
+                    self.status_file_list.addItem(item)
+            
+            # Add untracked files
+            for file_path in untracked:
+                item = QListWidgetItem(f"❓ {file_path} (untracked)")
+                item.setData(Qt.ItemDataRole.UserRole, {"path": file_path, "type": "untracked"})
+                item.setForeground(QColor("#ffa500"))
+                self.status_file_list.addItem(item)
+            
+            if self.status_file_list.count() == 0:
+                item = QListWidgetItem("No changes detected")
+                item.setFlags(Qt.ItemFlag.NoItemFlags)
+                self.status_file_list.addItem(item)
+                self.commit_btn.setEnabled(False)
+                self.push_btn.setEnabled(True)  # Can still push
+            else:
+                self.commit_btn.setEnabled(True)
+                self.push_btn.setEnabled(True)
+        except Exception as e:
+            show_message_dialog(
+                self,
+                "Error",
+                f"Failed to load status: {str(e)}",
+                msg_type="error"
+            )
+    
+    def on_status_file_selected(self, item: QListWidgetItem):
+        """Show diff for selected file in status tab"""
+        data = item.data(Qt.ItemDataRole.UserRole)
+        if not data or not self.current_path:
+            return
+        
+        file_path = data["path"]
+        file_type = data["type"]
+        
+        try:
+            repo = git.Repo(self.current_path)
+            
+            if file_type == "untracked":
+                # Show file content for untracked files
+                full_path = Path(self.current_path) / file_path
+                if full_path.exists() and full_path.is_file():
+                    content = full_path.read_text()
+                    diff_text = f"New file: {file_path}\n\n{content}"
+                else:
+                    diff_text = f"Cannot read file: {file_path}"
+            else:
+                # Show git diff
+                diff = repo.git.diff(file_path)
+                if not diff:
+                    diff = f"No diff available for {file_path}"
+                diff_text = diff
+            
+            self.status_diff_viewer.setPlainText(diff_text)
+        except Exception as e:
+            self.status_diff_viewer.setPlainText(f"Error loading diff: {str(e)}")
+    
+    def refresh_status(self):
+        """Refresh status tab"""
+        self.load_status_files()
+        self.status_diff_viewer.clear()
+    
+    def select_all_status_files(self):
+        """Select all files in status list"""
+        for i in range(self.status_file_list.count()):
+            item = self.status_file_list.item(i)
+            if item.flags() & Qt.ItemFlag.ItemIsSelectable:
+                item.setSelected(True)
+    
+    def deselect_all_status_files(self):
+        """Deselect all files in status list"""
+        self.status_file_list.clearSelection()
+    
+    def commit_changes(self):
+        """Commit changes"""
+        if not self.current_path:
+            return
+        
+        message = self.commit_message_input.toPlainText().strip()
+        
+        if not message:
+            show_message_dialog(
+                self,
+                "Commit Message Required",
+                "Please enter a commit message.",
+                msg_type="warning"
+            )
+            return
+        
+        try:
+            repo = git.Repo(self.current_path)
+            
+            # Get selected files
+            selected_items = self.status_file_list.selectedItems()
+            
+            # Stage files based on selection or stage all
+            if self.stage_all_check.isChecked():
+                # Stage all files
+                repo.git.add(A=True)
+            elif selected_items:
+                # Stage only selected files
+                for item in selected_items:
+                    data = item.data(Qt.ItemDataRole.UserRole)
+                    if data:
+                        file_path = data["path"]
+                        repo.git.add(file_path)
+            else:
+                show_message_dialog(
+                    self,
+                    "No Selection",
+                    "Please select files to commit or check 'Stage all files'.",
+                    msg_type="warning"
+                )
+                return
+            
+            # Check if there are changes to commit
+            if not repo.is_dirty() and not repo.untracked_files:
+                show_message_dialog(
+                    self,
+                    "No Changes",
+                    "No changes to commit.",
+                    msg_type="warning"
+                )
+                return
+            
+            # Commit
+            repo.index.commit(message)
+            
+            show_message_dialog(
+                self,
+                "Success",
+                "Changes committed successfully!"
+            )
+            
+            # Refresh status
+            self.load_status_files()
+            self.commit_message_input.clear()
+            
+        except Exception as e:
+            show_message_dialog(
+                self,
+                "Commit Failed",
+                f"Failed to commit changes:\n{str(e)}",
+                msg_type="error"
+            )
+    
+    def push_changes(self):
+        """Push changes to remote"""
+        if not self.current_path:
+            return
+        
+        try:
+            repo = git.Repo(self.current_path)
+            current_branch = repo.active_branch.name
+            origin = repo.remote('origin')
+            
+            # Check if branch exists on remote
+            remote_branches = [ref.name.split('/')[-1] for ref in origin.refs]
+            branch_exists = current_branch in remote_branches
+            
+            # Confirm push
+            push_msg = f"Push changes to remote branch '{current_branch}'?"
+            if not branch_exists:
+                push_msg = f"Branch '{current_branch}' doesn't exist on remote.\nPush and set upstream?"
+            
+            confirmed = show_confirmation_dialog(
+                self,
+                "Push Changes",
+                push_msg
+            )
+            
+            if not confirmed:
+                return
+            
+            # Push with --set-upstream if branch doesn't exist
+            if not branch_exists:
+                origin.push(refspec=f"{current_branch}:{current_branch}", set_upstream=True)
+            else:
+                origin.push(current_branch)
+            
+            show_message_dialog(
+                self,
+                "Success",
+                f"Changes pushed to {current_branch}!"
+            )
+            
+        except Exception as e:
+            show_message_dialog(
+                self,
+                "Push Failed",
+                f"Failed to push changes:\n{str(e)}",
+                msg_type="error"
+            )
+    
     def load_repo(self, path: str):
         """Load repository details"""
         self.current_path = path
@@ -576,15 +847,8 @@ class RepoDetailView(QWidget):
             self.remote_url.setText("-")
         
         # Update status tab
-        status = details.get("status", {})
-        modified = status.get("modified", [])
-        self.modified_list.setText("\n".join(modified) if modified else "(no modified files)")
-        
-        staged = status.get("staged", [])
-        self.staged_list.setText("\n".join(staged) if staged else "(no staged files)")
-        
-        untracked = status.get("untracked", [])
-        self.untracked_list.setText("\n".join(untracked) if untracked else "(no untracked files)")
+        if is_local:
+            self.load_status_files()
         
         # Update activity tab (branches and commits)
         self.display_activity(details)
@@ -600,9 +864,18 @@ class RepoDetailView(QWidget):
             self.remotes_table.setItem(row, 0, QTableWidgetItem(remote.get("name", "")))
             self.remotes_table.setItem(row, 1, QTableWidgetItem(remote.get("url", "")))
         
-        # Initialize PR tab only for local repos with GitHub remote
-        if is_local and self.current_repo_full_name and not self.pr_list_widget:
-            self.init_pr_widgets()
+        # Initialize or update PR tab for local repos with GitHub remote
+        if is_local and self.current_repo_full_name:
+            # If widgets already exist, update them with new repo
+            if self.pr_list_widget:
+                self.update_pr_widgets()
+            else:
+                # First time initialization
+                self.init_pr_widgets()
+        else:
+            # Clear PR widgets if not a local repo or no GitHub remote
+            if self.pr_list_widget:
+                self.clear_pr_widgets()
     
     def init_pr_widgets(self):
         """Initialize PR list and detail widgets"""
@@ -647,7 +920,14 @@ class RepoDetailView(QWidget):
         pr_tab_layout.addWidget(left_panel, 1)
         
         # Create right panel with PR details
-        self.pr_detail_view = PRDetailView(self.gh, self.current_repo_full_name, self)
+        # Pass is_local flag to enable/disable metadata management
+        is_local_repo = bool(self.current_path)
+        self.pr_detail_view = PRDetailView(
+            self.gh, 
+            self.current_repo_full_name, 
+            is_local=is_local_repo,
+            parent=self
+        )
         self.pr_detail_view.pr_updated.connect(self.on_pr_updated)
         pr_tab_layout.addWidget(self.pr_detail_view, 2)
     
@@ -660,6 +940,28 @@ class RepoDetailView(QWidget):
         """Handle PR update (merged, closed, etc.)"""
         if self.pr_list_widget:
             self.pr_list_widget.load_prs()
+    
+    def update_pr_widgets(self):
+        """Update PR widgets with new repository"""
+        if not self.current_repo_full_name:
+            return
+        
+        # Update the repo name in existing widgets
+        if self.pr_list_widget:
+            self.pr_list_widget.repo_name = self.current_repo_full_name
+            self.pr_list_widget.load_prs()
+        
+        if self.pr_detail_view:
+            self.pr_detail_view.repo_name = self.current_repo_full_name
+            self.pr_detail_view.is_local = bool(self.current_path)
+            self.pr_detail_view.show_placeholder()
+    
+    def clear_pr_widgets(self):
+        """Clear PR widgets"""
+        if self.pr_list_widget:
+            self.pr_list_widget.pr_list.clear()
+        if self.pr_detail_view:
+            self.pr_detail_view.show_placeholder()
     
     def clear(self):
         """Clear the view"""
@@ -939,6 +1241,9 @@ class RepoDetailView(QWidget):
                     commits_table.setItem(row, 1, QTableWidgetItem(commit.get("message", "")))
                     commits_table.setItem(row, 2, QTableWidgetItem(commit.get("author", "")))
                     commits_table.setItem(row, 3, QTableWidgetItem(commit.get("date", "")))
+                
+                # Enable sorting AFTER populating the table
+                commits_table.setSortingEnabled(True)
                 
                 self.activity_layout.addWidget(commits_table)
             else:
