@@ -17,7 +17,9 @@ import git
 
 from core.gh_wrapper import GHWrapper
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
-from ui.dialogs import show_message_dialog, show_confirmation_dialog
+from ui.pr_list_widget import PRListWidget
+from ui.pr_detail_view import PRDetailView
+from ui.pr_create_dialog import CreatePRDialog
 
 
 class LoadRepoDetailsThread(QThread):
@@ -76,6 +78,7 @@ class LoadRepoDetailsThread(QThread):
             details["branches"] = branches_with_commits
             
             # Remotes
+            repo_full_name = None
             for remote in repo.remotes:
                 remote_info = {
                     "name": remote.name,
@@ -104,11 +107,19 @@ class LoadRepoDetailsThread(QThread):
                     if len(parts) >= 2:
                         repo_full = f"{parts[0]}/{parts[1]}"
                 
+                # Store the first GitHub repo full name we find
+                if repo_full and not repo_full_name:
+                    repo_full_name = repo_full
+                
                 # Get remote info from GitHub
                 if repo_full and details["remote"] is None:
                     remote_data = self.gh.get_repo(repo_full)
                     if remote_data:
                         details["remote"] = remote_data
+            
+            # Store repo full name in details
+            if repo_full_name:
+                details["repo_full_name"] = repo_full_name
             
             # Get topics from GitHub API if remote exists
             if details["remote"]:
@@ -145,6 +156,8 @@ class RepoDetailView(QWidget):
         self.current_path = None
         self.current_repo_full_name = None
         self.current_topics = []
+        self.pr_list_widget = None
+        self.pr_detail_view = None
         self.init_ui()
     
     def init_ui(self):
@@ -215,6 +228,10 @@ class RepoDetailView(QWidget):
         # Remotes tab
         self.remotes_tab = self.create_remotes_tab()
         self.tabs.addTab(self.remotes_tab, "Remotes")
+        
+        # Pull Requests tab
+        self.pr_tab = self.create_pr_tab()
+        self.tabs.addTab(self.pr_tab, "Pull Requests")
         
         # Hide tabs initially
         self.tabs.hide()
@@ -395,6 +412,62 @@ class RepoDetailView(QWidget):
         
         return widget
     
+    def create_pr_tab(self) -> QWidget:
+        """Create the pull requests tab"""
+        widget = QWidget()
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        widget.setLayout(layout)
+        
+        # Left side - PR list
+        left_panel = QWidget()
+        left_layout = QVBoxLayout()
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_panel.setLayout(left_layout)
+        
+        # Create PR button
+        create_pr_btn = QPushButton("+ New Pull Request")
+        create_pr_btn.clicked.connect(self.create_pr)
+        left_layout.addWidget(create_pr_btn)
+        
+        # PR list widget
+        self.pr_list_widget = None  # Will be initialized when repo is loaded
+        left_layout.addWidget(QLabel("Loading..."))
+        
+        layout.addWidget(left_panel, 1)
+        
+        # Right side - PR details
+        self.pr_detail_view = None  # Will be initialized when repo is loaded
+        right_placeholder = QLabel("Select a PR to view details")
+        right_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right_placeholder.setStyleSheet("color: #888;")
+        layout.addWidget(right_placeholder, 2)
+        
+        return widget
+    
+    def create_pr(self):
+        """Open dialog to create a new pull request"""
+        if not self.current_path or not self.current_repo_full_name:
+            show_message_dialog(
+                self,
+                "Error",
+                "Cannot create PR: Repository information not available",
+                msg_type="error"
+            )
+            return
+        
+        dialog = CreatePRDialog(
+            self.current_path,
+            self.current_repo_full_name,
+            self.gh,
+            self
+        )
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Refresh PR list
+            if self.pr_list_widget:
+                self.pr_list_widget.load_prs()
+    
     def load_repo(self, path: str):
         """Load repository details"""
         self.current_path = path
@@ -431,20 +504,31 @@ class RepoDetailView(QWidget):
         # Hide/show tabs based on repo type
         status_index = self.tabs.indexOf(self.status_tab)
         remotes_index = self.tabs.indexOf(self.remotes_tab)
+        pr_index = self.tabs.indexOf(self.pr_tab)
         
         if is_local:
             if status_index == -1:
                 self.tabs.insertTab(1, self.status_tab, "Status")
             if remotes_index == -1:
                 self.tabs.addTab(self.remotes_tab, "Remotes")
+            # Show PR tab for local repos
+            if pr_index == -1:
+                self.tabs.addTab(self.pr_tab, "Pull Requests")
         else:
+            # GitHub-only repos: hide Status, Remotes, and PR tabs
             if status_index >= 0:
                 self.tabs.removeTab(status_index)
             if remotes_index >= 0:
                 self.tabs.removeTab(self.tabs.indexOf(self.remotes_tab))
+            if pr_index >= 0:
+                self.tabs.removeTab(self.tabs.indexOf(self.pr_tab))
         
-        # Extract repo full name from remote if available
-        if details.get("remote"):
+        # Extract repo full name from details or remote info
+        if details.get("repo_full_name"):
+            # Use the repo name extracted from git remote URL
+            self.current_repo_full_name = details["repo_full_name"]
+        elif details.get("remote"):
+            # Fallback: try to extract from GitHub API response
             remote_info = details["remote"]
             owner = remote_info.get("owner", {})
             owner_login = owner.get("login", "") if isinstance(owner, dict) else ""
@@ -515,6 +599,67 @@ class RepoDetailView(QWidget):
         for row, remote in enumerate(remotes):
             self.remotes_table.setItem(row, 0, QTableWidgetItem(remote.get("name", "")))
             self.remotes_table.setItem(row, 1, QTableWidgetItem(remote.get("url", "")))
+        
+        # Initialize PR tab only for local repos with GitHub remote
+        if is_local and self.current_repo_full_name and not self.pr_list_widget:
+            self.init_pr_widgets()
+    
+    def init_pr_widgets(self):
+        """Initialize PR list and detail widgets"""
+        if not self.current_repo_full_name:
+            return
+        
+        # Get the PR tab layout
+        pr_tab_layout = self.pr_tab.layout()
+        
+        # Clear existing widgets
+        while pr_tab_layout.count():
+            child = pr_tab_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        # Create left panel with PR list
+        left_panel = QWidget()
+        left_layout = QVBoxLayout()
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_panel.setLayout(left_layout)
+        
+        # Create PR button - only for local repositories
+        if self.current_path:
+            create_pr_btn = QPushButton("+ New Pull Request")
+            create_pr_btn.clicked.connect(self.create_pr)
+            left_layout.addWidget(create_pr_btn)
+        else:
+            # Show info label for GitHub-only repos
+            info_label = QLabel("💡 Clone this repository locally to create pull requests")
+            info_label.setWordWrap(True)
+            info_label.setStyleSheet(
+                "color: #666; font-size: 11px; padding: 8px; "
+                "background-color: #f6f8fa; border-radius: 4px;"
+            )
+            left_layout.addWidget(info_label)
+        
+        # PR list
+        self.pr_list_widget = PRListWidget(self.gh, self.current_repo_full_name, self)
+        self.pr_list_widget.pr_selected.connect(self.on_pr_selected)
+        left_layout.addWidget(self.pr_list_widget)
+        
+        pr_tab_layout.addWidget(left_panel, 1)
+        
+        # Create right panel with PR details
+        self.pr_detail_view = PRDetailView(self.gh, self.current_repo_full_name, self)
+        self.pr_detail_view.pr_updated.connect(self.on_pr_updated)
+        pr_tab_layout.addWidget(self.pr_detail_view, 2)
+    
+    def on_pr_selected(self, pr_number: int):
+        """Handle PR selection"""
+        if self.pr_detail_view:
+            self.pr_detail_view.load_pr(pr_number)
+    
+    def on_pr_updated(self):
+        """Handle PR update (merged, closed, etc.)"""
+        if self.pr_list_widget:
+            self.pr_list_widget.load_prs()
     
     def clear(self):
         """Clear the view"""

@@ -651,3 +651,221 @@ class GHWrapper:
                 "error": str(e),
                 "returncode": -1
             }
+
+    # =========================================================================
+    # Pull Requests
+    # =========================================================================
+    
+    def list_prs(self, repo: str, state: str = "open", 
+                 author: Optional[str] = None, limit: int = 30) -> Dict[str, Any]:
+        """
+        List pull requests for a repository.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            state: PR state - 'open', 'closed', 'merged', or 'all'
+            author: Filter by author username
+            limit: Maximum number of PRs to return
+            
+        Returns:
+            Dict with 'success' and 'output' (list of PR objects)
+        """
+        args = ["pr", "list", "--repo", repo, "--state", state, 
+                "--limit", str(limit), "--json", 
+                "number,title,author,state,createdAt,updatedAt,headRefName,baseRefName,isDraft,mergeable"]
+        
+        if author:
+            args.extend(["--author", author])
+        
+        result = self._run_command(args, capture_json=True)
+        return result
+    
+    def get_pr(self, repo: str, pr_number: int) -> Dict[str, Any]:
+        """
+        Get detailed information about a specific pull request.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            
+        Returns:
+            Dict with PR details
+        """
+        args = ["pr", "view", str(pr_number), "--repo", repo, "--json",
+                "number,title,body,author,state,createdAt,updatedAt,closedAt,"
+                "mergedAt,headRefName,baseRefName,isDraft,mergeable,additions,"
+                "deletions,changedFiles,comments,reviews,labels,assignees"]
+        
+        result = self._run_command(args, capture_json=True)
+        return result
+    
+    def create_pr(self, repo: str, title: str, body: str = "",
+                  head: Optional[str] = None, base: str = "main",
+                  draft: bool = False) -> Dict[str, Any]:
+        """
+        Create a new pull request.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            title: PR title
+            body: PR description/body
+            head: Source branch (defaults to current branch)
+            base: Target branch (default: main)
+            draft: Create as draft PR
+            
+        Returns:
+            Dict with created PR details
+        """
+        args = ["pr", "create", "--repo", repo, "--title", title,
+                "--body", body, "--base", base]
+        
+        if head:
+            args.extend(["--head", head])
+        
+        if draft:
+            args.append("--draft")
+        
+        result = self._run_command(args)
+        return result
+    
+    def merge_pr(self, repo: str, pr_number: int, 
+                 method: str = "merge", delete_branch: bool = False) -> Dict[str, Any]:
+        """
+        Merge a pull request.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            method: Merge method - 'merge', 'squash', or 'rebase'
+            delete_branch: Delete branch after merge
+            
+        Returns:
+            Dict with merge result
+        """
+        args = ["pr", "merge", str(pr_number), "--repo", repo]
+        
+        if method == "squash":
+            args.append("--squash")
+        elif method == "rebase":
+            args.append("--rebase")
+        else:
+            args.append("--merge")
+        
+        if delete_branch:
+            args.append("--delete-branch")
+        
+        result = self._run_command(args)
+        return result
+    
+    def close_pr(self, repo: str, pr_number: int, 
+                 comment: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Close a pull request without merging.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            comment: Optional closing comment
+            
+        Returns:
+            Dict with close result
+        """
+        args = ["pr", "close", str(pr_number), "--repo", repo]
+        
+        if comment:
+            args.extend(["--comment", comment])
+        
+        result = self._run_command(args)
+        return result
+    
+    def reopen_pr(self, repo: str, pr_number: int) -> Dict[str, Any]:
+        """
+        Reopen a closed pull request.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            
+        Returns:
+            Dict with reopen result
+        """
+        args = ["pr", "reopen", str(pr_number), "--repo", repo]
+        result = self._run_command(args)
+        return result
+    
+    def get_pr_diff(self, repo: str, pr_number: int) -> Dict[str, Any]:
+        """
+        Get the diff for a pull request.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            
+        Returns:
+            Dict with diff text
+        """
+        args = ["pr", "diff", str(pr_number), "--repo", repo]
+        result = self._run_command(args)
+        return result
+    
+    def comment_on_pr(self, repo: str, pr_number: int, 
+                      comment: str) -> Dict[str, Any]:
+        """
+        Add a comment to a pull request.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            comment: Comment text
+            
+        Returns:
+            Dict with comment result
+        """
+        args = ["pr", "comment", str(pr_number), "--repo", repo, 
+                "--body", comment]
+        result = self._run_command(args)
+        return result
+    
+    def review_pr(self, repo: str, pr_number: int, 
+                  action: str = "comment", body: str = "") -> Dict[str, Any]:
+        """
+        Review a pull request.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            action: Review action - 'approve', 'request-changes', or 'comment'
+            body: Review comment
+            
+        Returns:
+            Dict with review result
+        """
+        args = ["pr", "review", str(pr_number), "--repo", repo]
+        
+        if action == "approve":
+            args.append("--approve")
+        elif action == "request-changes":
+            args.append("--request-changes")
+        else:
+            args.append("--comment")
+        
+        if body:
+            args.extend(["--body", body])
+        
+        result = self._run_command(args)
+        return result
+    
+    def get_pr_checks(self, repo: str, pr_number: int) -> Dict[str, Any]:
+        """
+        Get CI/CD check status for a pull request.
+        
+        Args:
+            repo: Repository name (owner/repo)
+            pr_number: Pull request number
+            
+        Returns:
+            Dict with check status
+        """
+        args = ["pr", "checks", str(pr_number), "--repo", repo]
+        result = self._run_command(args)
+        return result
