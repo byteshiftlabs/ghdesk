@@ -5,12 +5,13 @@ Create repository dialog
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QTextEdit, QCheckBox, QPushButton,
-    QLabel, QMessageBox, QFileDialog
+    QLabel, QFileDialog
 )
 from PyQt6.QtCore import Qt
 from pathlib import Path
 
 from core.gh_wrapper import GHWrapper
+from ui.dialogs import show_message_dialog
 
 
 class CreateRepoDialog(QDialog):
@@ -105,7 +106,7 @@ class CreateRepoDialog(QDialog):
         name = self.name_edit.text().strip()
         
         if not name:
-            QMessageBox.warning(self, "Invalid Input", "Please enter a repository name")
+            show_message_dialog(self, "Invalid Input", "Please enter a repository name")
             return
         
         description = self.desc_edit.toPlainText().strip()
@@ -127,13 +128,13 @@ class CreateRepoDialog(QDialog):
         self.create_btn.setText("Create")
         
         if result["success"]:
-            QMessageBox.information(
+            show_message_dialog(
                 self, "Success",
                 f"Repository '{name}' created successfully!"
             )
             self.accept()
         else:
-            QMessageBox.warning(
-                self, "Creation Failed",
-                f"Failed to create repository:\n{result['error']}"
+            show_message_dialog(
+                self, "Creation Failed", "Failed to create repository",
+                result['error']
             )

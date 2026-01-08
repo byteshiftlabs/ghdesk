@@ -8,74 +8,13 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
-    QTableWidgetItem, QPushButton, QMessageBox, QHeaderView,
-    QDialog, QLabel, QCheckBox, QDialogButtonBox
+    QTableWidgetItem, QPushButton, QHeaderView
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 from core.gh_wrapper import GHWrapper
 from core.repo_manager import RepoManager
-
-
-def create_confirmation_dialog(parent, title: str, main_text: str, info_text: str,
-                                icon=QMessageBox.Icon.Question,
-                                yes_text: str = "Yes", no_text: str = "No",
-                                checkbox_text: str = None) -> tuple:
-    """
-    Create a properly sized confirmation dialog
-    
-    Returns:
-        (accepted: bool, checkbox_checked: bool) if checkbox_text provided
-        accepted: bool if no checkbox
-    """
-    dialog = QDialog(parent)
-    dialog.setWindowTitle(title)
-    
-    layout = QVBoxLayout()
-    layout.setContentsMargins(24, 24, 24, 20)
-    layout.setSpacing(16)
-    dialog.setLayout(layout)
-    
-    # Main text
-    main_label = QLabel(main_text)
-    main_label.setStyleSheet("font-size: 14px; font-weight: bold;")
-    main_label.setWordWrap(True)
-    main_label.setMinimumWidth(350)
-    layout.addWidget(main_label)
-    
-    # Info text
-    info_label = QLabel(info_text)
-    info_label.setStyleSheet("font-size: 13px;")
-    info_label.setWordWrap(True)
-    info_label.setTextFormat(Qt.TextFormat.RichText)
-    info_label.setMinimumWidth(350)
-    layout.addWidget(info_label)
-    
-    # Optional checkbox
-    checkbox = None
-    if checkbox_text:
-        checkbox = QCheckBox(checkbox_text)
-        layout.addWidget(checkbox)
-    
-    layout.addStretch()
-    
-    # Buttons
-    button_box = QDialogButtonBox()
-    yes_btn = QPushButton(yes_text)
-    yes_btn.setMinimumWidth(100)
-    yes_btn.clicked.connect(dialog.accept)
-    no_btn = QPushButton(no_text)
-    no_btn.setMinimumWidth(100)
-    no_btn.clicked.connect(dialog.reject)
-    button_box.addButton(yes_btn, QDialogButtonBox.ButtonRole.AcceptRole)
-    button_box.addButton(no_btn, QDialogButtonBox.ButtonRole.RejectRole)
-    layout.addWidget(button_box)
-    
-    result = dialog.exec() == QDialog.DialogCode.Accepted
-    
-    if checkbox_text:
-        return result, checkbox.isChecked() if checkbox else False
-    return result
+from ui.dialogs import show_message_dialog, show_confirmation_dialog
 
 
 class LoadReposThread(QThread):
@@ -205,7 +144,7 @@ class RepoView(QWidget):
             else:
                 owner = repo.get("owner", {}).get("login", "") if isinstance(repo.get("owner"), dict) else ""
                 is_private = repo.get("isPrivate")
-                visibility_text = "🔒 Private" if is_private else "🌐 Public"
+                visibility_text = "Private" if is_private else "Public"
                 
                 self.table.setItem(row, 0, QTableWidgetItem(repo.get("name", "")))
                 self.table.setItem(row, 1, QTableWidgetItem(owner))
@@ -248,7 +187,7 @@ class RepoView(QWidget):
         selected_rows = self.table.selectionModel().selectedRows()
         
         if not selected_rows:
-            QMessageBox.warning(self, "No Selection", "Please select a repository to delete")
+            show_message_dialog(self, "No Selection", "Please select a repository to delete")
             return
         
         row = selected_rows[0].row()
@@ -260,13 +199,12 @@ class RepoView(QWidget):
         # Check if there's a local clone
         local_path = self._find_local_clone(name)
         
-        accepted, delete_local = create_confirmation_dialog(
+        accepted, delete_local = show_confirmation_dialog(
             self,
             "Confirm Delete",
             f"Delete repository '{repo_full}'?",
-            f"<span style='color: #f44336;'>⚠️ <b>Warning:</b> This action cannot be undone!</span><br><br>"
+            f"<span style='color: #f44336;'><b>Warning:</b> This action cannot be undone!</span><br><br>"
             f"The remote repository on GitHub will be permanently deleted.",
-            icon=QMessageBox.Icon.Warning,
             yes_text="Yes, Delete",
             no_text="Cancel",
             checkbox_text="Also delete local clone" if local_path else None
@@ -285,11 +223,11 @@ class RepoView(QWidget):
                     except Exception as e:
                         msg += f"\nFailed to delete local clone: {e}"
                 
-                QMessageBox.information(self, "Success", msg)
+                show_message_dialog(self, "Success", msg)
                 self.load_repos()
             else:
-                QMessageBox.warning(self, "Delete Failed",
-                                  f"Failed to delete repository:\n{result['error']}")
+                show_message_dialog(self, "Delete Failed", "Failed to delete repository",
+                                  result['error'])
     
     def _find_local_clone(self, repo_name: str) -> str:
         """Find local clone of a repository by name"""
@@ -315,7 +253,7 @@ class RepoView(QWidget):
         selected_rows = self.table.selectionModel().selectedRows()
         
         if not selected_rows:
-            QMessageBox.warning(self, "No Selection", "Please select a repository to clone")
+            show_message_dialog(self, "No Selection", "Please select a repository to clone")
             return
         
         row = selected_rows[0].row()
@@ -336,17 +274,17 @@ class RepoView(QWidget):
             result = self.gh.clone_repo(repo_full, target_path)
             
             if result["success"]:
-                QMessageBox.information(self, "Success", f"Cloned to {target_path}")
+                show_message_dialog(self, "Success", f"Cloned to {target_path}")
             else:
-                QMessageBox.warning(self, "Clone Failed",
-                                  f"Failed to clone repository:\n{result['error']}")
+                show_message_dialog(self, "Clone Failed", "Failed to clone repository",
+                                  result['error'])
     
     def change_visibility(self):
         """Change visibility of selected repository"""
         selected_rows = self.table.selectionModel().selectedRows()
         
         if not selected_rows:
-            QMessageBox.warning(self, "No Selection", "Please select a repository")
+            show_message_dialog(self, "No Selection", "Please select a repository")
             return
         
         row = selected_rows[0].row()
@@ -358,17 +296,13 @@ class RepoView(QWidget):
         
         # Ask for new visibility
         new_visibility = "public" if is_private else "private"
-        current_icon = "🔒" if is_private else "🌐"
-        new_icon = "🌐" if is_private else "🔒"
         
-        accepted = create_confirmation_dialog(
+        accepted = show_confirmation_dialog(
             self,
             "Change Visibility",
             f"Change visibility of '{repo_full}'?",
-            f"<table style='font-size: 13px;'>"
-            f"<tr><td>Current:</td><td><b>{current_icon} {'Private' if is_private else 'Public'}</b></td></tr>"
-            f"<tr><td>New:</td><td><b>{new_icon} {new_visibility.capitalize()}</b></td></tr>"
-            f"</table>",
+            f"Current: <b>{'Private' if is_private else 'Public'}</b><br>"
+            f"New: <b>{new_visibility.capitalize()}</b>",
             yes_text=f"Make {new_visibility.capitalize()}",
             no_text="Cancel"
         )
@@ -377,9 +311,9 @@ class RepoView(QWidget):
             result = self.gh.edit_repo(repo_full, visibility=new_visibility)
             
             if result["success"]:
-                QMessageBox.information(self, "Success", 
+                show_message_dialog(self, "Success", 
                                       f"Repository is now {new_visibility}")
                 self.load_repos()
             else:
-                QMessageBox.warning(self, "Failed",
-                                  f"Failed to change visibility:\n{result['error']}")
+                show_message_dialog(self, "Failed", "Failed to change visibility",
+                                  result['error'])

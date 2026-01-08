@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QTabWidget, QToolBar, QStatusBar, QMessageBox,
+    QTabWidget, QToolBar, QStatusBar,
     QPushButton, QLabel, QFileDialog, QSplitter, QComboBox, QSizePolicy,
     QApplication
 )
@@ -20,6 +20,7 @@ from ui.create_dialog import CreateRepoDialog
 from ui.file_tree import FileTreeWidget
 from ui.repo_detail_view import RepoDetailView
 from ui.themes import get_theme, THEMES
+from ui.dialogs import show_message_dialog, show_confirmation_dialog
 
 
 class AuthCheckThread(QThread):
@@ -87,12 +88,12 @@ class MainWindow(QMainWindow):
         # Local repositories tab
         self.local_view = RepoView(self.gh, self.repo_manager, is_local=True)
         self.local_view.repo_selected.connect(self.on_local_repo_selected)
-        self.tabs.addTab(self.local_view, "💻 Local Repositories")
+        self.tabs.addTab(self.local_view, "Local Repositories")
         
         # GitHub repositories tab
         self.remote_view = RepoView(self.gh, self.repo_manager, is_local=False)
         self.remote_view.repo_selected.connect(self.on_github_repo_selected)
-        self.tabs.addTab(self.remote_view, "☁️ GitHub Repositories")
+        self.tabs.addTab(self.remote_view, "GitHub Repositories")
         
         # Status bar
         self.status_bar = QStatusBar()
@@ -113,12 +114,12 @@ class MainWindow(QMainWindow):
         self.addToolBar(toolbar)
         
         # Login action
-        self.login_action = QAction("🔑 Login", self)
+        self.login_action = QAction("Login", self)
         self.login_action.triggered.connect(self.login)
         toolbar.addAction(self.login_action)
         
         # Logout action
-        self.logout_action = QAction("🚪 Logout", self)
+        self.logout_action = QAction("Logout", self)
         self.logout_action.triggered.connect(self.logout)
         self.logout_action.setEnabled(False)
         toolbar.addAction(self.logout_action)
@@ -126,14 +127,14 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
         
         # Create repo
-        create_action = QAction("➕ Create Repository", self)
+        create_action = QAction("Create Repository", self)
         create_action.triggered.connect(self.create_repository)
         toolbar.addAction(create_action)
         
         toolbar.addSeparator()
         
         # Refresh
-        refresh_action = QAction("🔄 Refresh", self)
+        refresh_action = QAction("Refresh", self)
         refresh_action.triggered.connect(self.refresh)
         toolbar.addAction(refresh_action)
         
@@ -143,7 +144,7 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(spacer)
         
         # Theme selector on the right
-        theme_label = QLabel("🎨 Theme:")
+        theme_label = QLabel("Theme:")
         theme_label.setStyleSheet("padding-right: 8px;")
         toolbar.addWidget(theme_label)
         self.theme_combo = QComboBox()
@@ -166,7 +167,7 @@ class MainWindow(QMainWindow):
         self.authenticated = authenticated
         
         if authenticated:
-            self.auth_label.setText("✓ Authenticated")
+            self.auth_label.setText("Authenticated")
             self.auth_label.setStyleSheet("""
                 background-color: #4caf50;
                 color: #ffffff;
@@ -182,7 +183,7 @@ class MainWindow(QMainWindow):
             # Load GitHub repos
             self.remote_view.load_repos()
         else:
-            self.auth_label.setText("✗ Not authenticated")
+            self.auth_label.setText("Not authenticated")
             self.auth_label.setStyleSheet("""
                 background-color: #f44336;
                 color: #ffffff;
@@ -201,34 +202,28 @@ class MainWindow(QMainWindow):
         result = self.gh.login(web=True)
         
         if result["success"]:
-            QMessageBox.information(self, "Success", "Successfully authenticated with GitHub!")
+            show_message_dialog(self, "Success", "Successfully authenticated with GitHub!")
             self.check_authentication()
         else:
-            QMessageBox.warning(self, "Login Failed", 
-                              f"Failed to login:\n{result['error']}")
+            show_message_dialog(self, "Login Failed", "Failed to login", result['error'])
     
     def logout(self):
         """Logout from GitHub"""
-        msg_box = QMessageBox(self)
-        msg_box.setIcon(QMessageBox.Icon.Question)
-        msg_box.setWindowTitle("Confirm Logout")
-        msg_box.setText("Are you sure you want to logout from GitHub?")
-        msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        msg_box.setDefaultButton(QMessageBox.StandardButton.No)
-        msg_box.button(QMessageBox.StandardButton.Yes).setText("Yes")
-        msg_box.button(QMessageBox.StandardButton.No).setText("No")
-        msg_box.setMinimumWidth(400)
+        accepted = show_confirmation_dialog(
+            self,
+            "Confirm Logout",
+            "Are you sure you want to logout from GitHub?",
+            yes_text="Yes",
+            no_text="No"
+        )
         
-        reply = msg_box.exec()
-        
-        if reply == QMessageBox.StandardButton.Yes:
+        if accepted:
             result = self.gh.logout()
             if result["success"]:
-                QMessageBox.information(self, "Success", "Successfully logged out")
+                show_message_dialog(self, "Success", "Successfully logged out")
                 self.check_authentication()
             else:
-                QMessageBox.warning(self, "Logout Failed",
-                                  f"Failed to logout:\n{result['error']}")
+                show_message_dialog(self, "Logout Failed", "Failed to logout", result['error'])
     
     def on_directory_selected(self, path: str):
         """Handle directory selection from file tree"""

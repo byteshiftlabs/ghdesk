@@ -25,7 +25,7 @@ class FileTreeWidget(QWidget):
         self.setLayout(layout)
         
         # Header
-        header = QLabel("📂 Filesystem")
+        header = QLabel("Filesystem")
         header.setStyleSheet("font-weight: 600; font-size: 14px; padding: 8px;")
         layout.addWidget(header)
         
@@ -48,7 +48,7 @@ class FileTreeWidget(QWidget):
         
         # Add home directory only (don't expose root filesystem)
         home = str(Path.home())
-        home_item = self.create_tree_item("🏠 Home", home)
+        home_item = self.create_tree_item("Home", home)
         self.tree.addTopLevelItem(home_item)
         self.add_placeholder(home_item)
         
@@ -93,11 +93,11 @@ class FileTreeWidget(QWidget):
             
             # Add directories to tree
             for directory in directories:
-                icon = "📁"
+                icon = "[D]"
                 
                 # Check if it's a git repo
                 if (directory / ".git").exists():
-                    icon = "📦"
+                    icon = "[R]"
                 
                 item = self.create_tree_item(f"{icon} {directory.name}", str(directory))
                 parent.addChild(item)

@@ -9,13 +9,14 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel,
     QTableWidget, QTableWidgetItem, QTextEdit, QPushButton,
     QHeaderView, QGroupBox, QFormLayout, QFrame, QScrollArea,
-    QMessageBox, QInputDialog, QLineEdit, QDialog, QDialogButtonBox
+    QInputDialog, QLineEdit, QDialog, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QRect, QPoint
 from PyQt6.QtGui import QFont, QCursor
 import git
 
 from core.gh_wrapper import GHWrapper
+from ui.dialogs import show_message_dialog, show_confirmation_dialog
 
 
 class LoadRepoDetailsThread(QThread):
@@ -165,23 +166,23 @@ class RepoDetailView(QWidget):
         
         # Overview tab
         self.overview_tab = self.create_overview_tab()
-        self.tabs.addTab(self.overview_tab, "📋 Overview")
+        self.tabs.addTab(self.overview_tab, "Overview")
         
         # Status tab
         self.status_tab = self.create_status_tab()
-        self.tabs.addTab(self.status_tab, "📊 Status")
+        self.tabs.addTab(self.status_tab, "Status")
         
         # Activity tab (branches & commits)
         self.commits_tab = self.create_commits_tab()
-        self.tabs.addTab(self.commits_tab, "📝 Activity")
+        self.tabs.addTab(self.commits_tab, "Activity")
         
         # Topics tab
         self.tags_tab = self.create_tags_tab()
-        self.tabs.addTab(self.tags_tab, "🔖 Topics")
+        self.tabs.addTab(self.tags_tab, "Topics")
         
         # Remotes tab
         self.remotes_tab = self.create_remotes_tab()
-        self.tabs.addTab(self.remotes_tab, "☁️ Remotes")
+        self.tabs.addTab(self.remotes_tab, "Remotes")
         
         # Hide tabs initially
         self.tabs.hide()
@@ -200,7 +201,7 @@ class RepoDetailView(QWidget):
         scroll_content.setLayout(scroll_layout)
         
         # Local info group
-        local_group = QGroupBox("📁 Local Repository")
+        local_group = QGroupBox("Local Repository")
         local_layout = QFormLayout()
         local_group.setLayout(local_layout)
         
@@ -218,7 +219,7 @@ class RepoDetailView(QWidget):
         scroll_layout.addWidget(local_group)
         
         # Remote info group
-        remote_group = QGroupBox("☁️ GitHub Repository")
+        remote_group = QGroupBox("GitHub Repository")
         remote_layout = QFormLayout()
         remote_group.setLayout(remote_layout)
         
@@ -256,7 +257,7 @@ class RepoDetailView(QWidget):
         widget.setLayout(layout)
         
         # Modified files
-        modified_group = QGroupBox("📝 Modified Files")
+        modified_group = QGroupBox("Modified Files")
         modified_layout = QVBoxLayout()
         modified_group.setLayout(modified_layout)
         self.modified_list = QTextEdit()
@@ -266,7 +267,7 @@ class RepoDetailView(QWidget):
         layout.addWidget(modified_group)
         
         # Staged files
-        staged_group = QGroupBox("✅ Staged Files")
+        staged_group = QGroupBox("Staged Files")
         staged_layout = QVBoxLayout()
         staged_group.setLayout(staged_layout)
         self.staged_list = QTextEdit()
@@ -276,7 +277,7 @@ class RepoDetailView(QWidget):
         layout.addWidget(staged_group)
         
         # Untracked files
-        untracked_group = QGroupBox("❓ Untracked Files")
+        untracked_group = QGroupBox("Untracked Files")
         untracked_layout = QVBoxLayout()
         untracked_group.setLayout(untracked_layout)
         self.untracked_list = QTextEdit()
@@ -369,11 +370,11 @@ class RepoDetailView(QWidget):
         # Check if it's a git repo
         git_dir = Path(path) / ".git"
         if not git_dir.exists():
-            self.header.setText(f"📂 {Path(path).name} (not a Git repository)")
+            self.header.setText(f"{Path(path).name} (not a Git repository)")
             self.tabs.hide()
             return
         
-        self.header.setText(f"📦 {Path(path).name}")
+        self.header.setText(f"{Path(path).name}")
         self.loading_label.show()
         self.tabs.hide()
         
@@ -387,7 +388,7 @@ class RepoDetailView(QWidget):
         self.loading_label.hide()
         
         if details.get("error"):
-            self.header.setText(f"❌ Error: {details['error']}")
+            self.header.setText(f"Error: {details['error']}")
             return
         
         self.tabs.show()
@@ -401,9 +402,9 @@ class RepoDetailView(QWidget):
         
         if is_local:
             if status_index == -1:
-                self.tabs.insertTab(1, self.status_tab, "📊 Status")
+                self.tabs.insertTab(1, self.status_tab, "Status")
             if remotes_index == -1:
-                self.tabs.addTab(self.remotes_tab, "☁️ Remotes")
+                self.tabs.addTab(self.remotes_tab, "Remotes")
         else:
             if status_index >= 0:
                 self.tabs.removeTab(status_index)
@@ -428,8 +429,8 @@ class RepoDetailView(QWidget):
         if is_local:
             self.local_name.setText(local.get("name", "-"))
             self.local_path.setText(local.get("path", "-"))
-            self.local_branch.setText(f"🌿 {local.get('branch', '-')}")
-            status_text = "✅ Clean" if not local.get("is_dirty") else "📝 Modified"
+            self.local_branch.setText(f"{local.get('branch', '-')}")
+            status_text = "Clean" if not local.get("is_dirty") else "Modified"
             self.local_status.setText(status_text)
         else:
             # GitHub-only repo, hide/disable local info
@@ -442,12 +443,12 @@ class RepoDetailView(QWidget):
         remote = details.get("remote")
         if remote:
             self.remote_name.setText(remote.get("name", "-"))
-            visibility = "🔒 Private" if remote.get("isPrivate") else "🌐 Public"
+            visibility = "Private" if remote.get("isPrivate") else "Public"
             self.remote_visibility.setText(visibility)
             self.remote_description.setText(remote.get("description") or "(no description)")
-            self.remote_stars.setText(f"⭐ {remote.get('stargazerCount', 0)}")
-            self.remote_forks.setText(f"🍴 {remote.get('forkCount', 0)}")
-            self.remote_issues.setText(f"📋 {remote.get('issues', {}).get('totalCount', 0)}")
+            self.remote_stars.setText(f"{remote.get('stargazerCount', 0)}")
+            self.remote_forks.setText(f"{remote.get('forkCount', 0)}")
+            self.remote_issues.setText(f"{remote.get('issues', {}).get('totalCount', 0)}")
             self.remote_url.setText(remote.get("url", "-"))
         else:
             self.remote_name.setText("No GitHub remote found")
@@ -494,7 +495,7 @@ class RepoDetailView(QWidget):
         self.current_path = None
         self.current_repo_full_name = repo_full_name
         self.loading_label.show()
-        self.header.setText(f"📦 {repo_full_name}")
+        self.header.setText(f"{repo_full_name}")
         self.tabs.show()
         
         # Load GitHub repo info
@@ -529,7 +530,7 @@ class RepoDetailView(QWidget):
             self.on_details_loaded(details)
         else:
             self.loading_label.hide()
-            self.header.setText(f"❌ Failed to load {repo_full_name}")
+            self.header.setText(f"Failed to load {repo_full_name}")
     
     def display_topics(self):
         """Display topics as interactive badges"""
@@ -601,14 +602,7 @@ class RepoDetailView(QWidget):
     def add_topic(self):
         """Add a new topic to the repository"""
         if not self.current_repo_full_name:
-            msg = QMessageBox(self)
-            msg.setIcon(QMessageBox.Icon.Warning)
-            msg.setWindowTitle("Cannot Add Topic")
-            msg.setText("Topics can only be added to GitHub repositories.")
-            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-            for label in msg.findChildren(QLabel):
-                label.setMinimumWidth(350)
-            msg.exec()
+            show_message_dialog(self, "Cannot Add Topic", "Topics can only be added to GitHub repositories.")
             return
         
         # Create custom input dialog
@@ -616,41 +610,39 @@ class RepoDetailView(QWidget):
         dialog.setWindowTitle("Add Topic")
         
         layout = QVBoxLayout()
-        layout.setContentsMargins(24, 24, 24, 20)
-        layout.setSpacing(16)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
         dialog.setLayout(layout)
         
         # Main text
         main_label = QLabel("Add a new topic")
-        main_label.setStyleSheet("font-size: 14px; font-weight: bold;")
-        main_label.setMinimumWidth(350)
+        main_label.setStyleSheet("font-size: 12px; font-weight: bold;")
         layout.addWidget(main_label)
         
         # Info text
         info_label = QLabel("Enter topic name (lowercase, hyphens instead of spaces)")
-        info_label.setStyleSheet("font-size: 13px; color: #666;")
-        info_label.setMinimumWidth(350)
+        info_label.setStyleSheet("font-size: 11px; color: #666;")
         layout.addWidget(info_label)
         
         # Input field
         topic_input = QLineEdit()
-        topic_input.setPlaceholderText("e.g., python, machine-learning, web-development")
-        topic_input.setStyleSheet("padding: 8px; font-size: 13px;")
+        topic_input.setPlaceholderText("e.g., python, machine-learning")
+        topic_input.setStyleSheet("padding: 4px; font-size: 12px;")
         layout.addWidget(topic_input)
-        
-        layout.addStretch()
         
         # Buttons
         button_box = QDialogButtonBox()
         add_btn = QPushButton("Add")
-        add_btn.setMinimumWidth(100)
+        add_btn.setMinimumWidth(70)
         add_btn.clicked.connect(dialog.accept)
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setMinimumWidth(100)
+        cancel_btn.setMinimumWidth(70)
         cancel_btn.clicked.connect(dialog.reject)
         button_box.addButton(add_btn, QDialogButtonBox.ButtonRole.AcceptRole)
         button_box.addButton(cancel_btn, QDialogButtonBox.ButtonRole.RejectRole)
         layout.addWidget(button_box)
+        
+        dialog.adjustSize()
         
         # Execute dialog
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -667,75 +659,39 @@ class RepoDetailView(QWidget):
             existing_names = [t.get("name", "") if isinstance(t, dict) else str(t) 
                             for t in self.current_topics]
             if topic in existing_names:
-                msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Icon.Information)
-                msg.setWindowTitle("Topic Exists")
-                msg.setText(f"Topic '{topic}' already exists.")
-                msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-                for label in msg.findChildren(QLabel):
-                    label.setMinimumWidth(350)
-                msg.exec()
+                show_message_dialog(self, "Topic Exists", f"Topic '{topic}' already exists.")
                 return
             
             # Add via GitHub API
             result = self.gh.add_topic(self.current_repo_full_name, topic)
             if result.get("success"):
-                msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Icon.Information)
-                msg.setWindowTitle("Success")
-                msg.setText(f"Topic '{topic}' added successfully")
-                msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-                for label in msg.findChildren(QLabel):
-                    label.setMinimumWidth(350)
-                msg.exec()
+                show_message_dialog(self, "Success", f"Topic '{topic}' added successfully")
                 # Refresh repo details
                 self.load_github_repo(self.current_repo_full_name)
             else:
-                msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Icon.Warning)
-                msg.setWindowTitle("Failed")
-                msg.setText(f"Failed to add topic: {result.get('error', 'Unknown error')}")
-                msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-                for label in msg.findChildren(QLabel):
-                    label.setMinimumWidth(350)
-                msg.exec()
+                show_message_dialog(self, "Failed", "Failed to add topic", result.get('error', 'Unknown error'))
     
     def remove_topic(self, topic_name: str):
         """Remove a topic from the repository"""
         if not self.current_repo_full_name:
             return
         
-        msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Icon.Question)
-        msg.setWindowTitle("Remove Topic")
-        msg.setText(f"Remove topic '{topic_name}'?")
-        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        msg.setDefaultButton(QMessageBox.StandardButton.No)
-        for label in msg.findChildren(QLabel):
-            label.setMinimumWidth(350)
+        accepted = show_confirmation_dialog(
+            self,
+            "Remove Topic",
+            f"Remove topic '{topic_name}'?",
+            yes_text="Yes",
+            no_text="No"
+        )
         
-        if msg.exec() == QMessageBox.StandardButton.Yes:
+        if accepted:
             result = self.gh.remove_topic(self.current_repo_full_name, topic_name)
             if result.get("success"):
-                success_msg = QMessageBox(self)
-                success_msg.setIcon(QMessageBox.Icon.Information)
-                success_msg.setWindowTitle("Success")
-                success_msg.setText(f"Topic '{topic_name}' removed successfully")
-                success_msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-                for label in success_msg.findChildren(QLabel):
-                    label.setMinimumWidth(350)
-                success_msg.exec()
+                show_message_dialog(self, "Success", f"Topic '{topic_name}' removed successfully")
                 # Refresh repo details
                 self.load_github_repo(self.current_repo_full_name)
             else:
-                error_msg = QMessageBox(self)
-                error_msg.setIcon(QMessageBox.Icon.Warning)
-                error_msg.setWindowTitle("Failed")
-                error_msg.setText(f"Failed to remove topic: {result.get('error', 'Unknown error')}")
-                error_msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-                for label in error_msg.findChildren(QLabel):
-                    label.setMinimumWidth(350)
-                error_msg.exec()
+                show_message_dialog(self, "Failed", "Failed to remove topic", result.get('error', 'Unknown error'))
     
     def display_activity(self, details: dict):
         """Display branches with their commits"""
@@ -762,7 +718,7 @@ class RepoDetailView(QWidget):
             # Branch header
             branch_header = QLabel()
             if is_current:
-                branch_header.setText(f"🌿 {branch_name} (current)")
+                branch_header.setText(f"{branch_name} (current)")
                 branch_header.setStyleSheet("""
                     QLabel {
                         font-size: 14px;
@@ -774,7 +730,7 @@ class RepoDetailView(QWidget):
                     }
                 """)
             else:
-                branch_header.setText(f"🌿 {branch_name}")
+                branch_header.setText(f"{branch_name}")
                 branch_header.setStyleSheet("""
                     QLabel {
                         font-size: 14px;
