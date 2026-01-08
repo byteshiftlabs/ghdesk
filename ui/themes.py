@@ -251,7 +251,8 @@ QMessageBox {
 }
 
 QMessageBox QPushButton {
-    min-width: 80px;
+    min-width: 60px;
+    padding: 4px 8px;
 }
 
 QTreeWidget {
@@ -554,7 +555,8 @@ QMessageBox {
 }
 
 QMessageBox QPushButton {
-    min-width: 80px;
+    min-width: 60px;
+    padding: 4px 8px;
 }
 
 QTreeWidget {
@@ -858,7 +860,8 @@ QMessageBox {
 }
 
 QMessageBox QPushButton {
-    min-width: 80px;
+    min-width: 60px;
+    padding: 4px 8px;
 }
 
 QTreeWidget {

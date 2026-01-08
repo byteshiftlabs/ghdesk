@@ -5,12 +5,13 @@ Create tag dialog
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QTextEdit, QCheckBox, QPushButton,
-    QLabel, QMessageBox, QComboBox
+    QLabel, QComboBox
 )
 from PyQt6.QtCore import Qt
 import git
 
 from core.gh_wrapper import GHWrapper
+from ui.dialogs import show_message_dialog
 
 
 class CreateTagDialog(QDialog):
@@ -26,7 +27,7 @@ class CreateTagDialog(QDialog):
         try:
             self.repo = git.Repo(repo_path)
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to open repository: {str(e)}")
+            show_message_dialog(self, "Error", "Failed to open repository", str(e))
             return
         
         self.init_ui()
@@ -35,9 +36,11 @@ class CreateTagDialog(QDialog):
         """Initialize the user interface"""
         self.setWindowTitle("Create Tag")
         self.setModal(True)
-        self.resize(500, 350)
+        self.resize(400, 280)
         
         layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
         self.setLayout(layout)
         
         # Form layout
@@ -66,13 +69,13 @@ class CreateTagDialog(QDialog):
         # Message (optional)
         self.message_edit = QTextEdit()
         self.message_edit.setPlaceholderText("Optional: Add a message to create an annotated tag...")
-        self.message_edit.setMaximumHeight(100)
+        self.message_edit.setMaximumHeight(70)
         form.addRow("Message:", self.message_edit)
         
         # Info label
-        info_label = QLabel("💡 The tag will be created locally and pushed to the remote repository.")
+        info_label = QLabel("The tag will be created locally and pushed to the remote repository.")
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: #666; font-size: 11px; padding: 10px;")
+        info_label.setStyleSheet("color: #666; font-size: 11px; padding: 4px;")
         layout.addWidget(info_label)
         
         layout.addStretch()
@@ -100,7 +103,7 @@ class CreateTagDialog(QDialog):
         
         # Validation
         if not tag_name:
-            QMessageBox.warning(self, "Validation Error", "Please enter a tag name.")
+            show_message_dialog(self, "Validation Error", "Please enter a tag name.")
             return
         
         if not target:
@@ -115,15 +118,17 @@ class CreateTagDialog(QDialog):
         )
         
         if result["success"]:
-            QMessageBox.information(
+            show_message_dialog(
                 self, 
                 "Success", 
-                f"Tag '{tag_name}' has been created and pushed to the remote repository."
+                f"Tag '{tag_name}' has been created",
+                "The tag has been pushed to the remote repository."
             )
             self.accept()
         else:
-            QMessageBox.critical(
+            show_message_dialog(
                 self,
                 "Error Creating Tag",
-                f"Failed to create tag:\n\n{result['error']}"
+                "Failed to create tag",
+                result['error']
             )
