@@ -21,6 +21,10 @@ from ui.file_tree import FileTreeWidget
 from ui.repo_detail_view import RepoDetailView
 from ui.themes import get_theme, THEMES
 from ui.dialogs import show_message_dialog
+from ui.constants import (
+    APP_TITLE, WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT,
+    SPLITTER_FILE_TREE_WIDTH, SPLITTER_TABS_WIDTH, SPLITTER_DETAILS_WIDTH
+)
 
 
 class AuthCheckThread(QThread):
@@ -51,8 +55,8 @@ class MainWindow(QMainWindow):
     
     def init_ui(self):
         """Initialize the user interface"""
-        self.setWindowTitle("ghdesk - GitHub Desktop Manager")
-        self.setGeometry(100, 100, 1400, 800)
+        self.setWindowTitle(APP_TITLE)
+        self.setGeometry(WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT)
         
         # Create toolbar
         self.create_toolbar()
@@ -83,8 +87,12 @@ class MainWindow(QMainWindow):
         self.repo_detail_view.hide_requested.connect(self.toggle_detail_panel)
         self.main_splitter.addWidget(self.repo_detail_view)
         
-        # Set splitter sizes: 220px for tree, 500px for tabs, 480px for details
-        self.main_splitter.setSizes([220, 500, 480])
+        # Set splitter sizes
+        self.main_splitter.setSizes([
+            SPLITTER_FILE_TREE_WIDTH,
+            SPLITTER_TABS_WIDTH,
+            SPLITTER_DETAILS_WIDTH
+        ])
         
         # Local repositories tab
         self.local_view = RepoView(self.gh, self.repo_manager, is_local=True)
