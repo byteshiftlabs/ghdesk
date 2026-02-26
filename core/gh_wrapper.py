@@ -3,9 +3,11 @@ GitHub CLI (gh) wrapper
 Provides Python interface to gh commands
 """
 
-import subprocess
+import base64
+import datetime
 import json
 import os
+import subprocess
 from typing import Optional, List, Dict, Any
 
 
@@ -240,7 +242,6 @@ class GHWrapper:
             return {"success": False, "error": "License template is empty"}
         
         # Replace placeholders in license template
-        import datetime
         current_year = str(datetime.datetime.now().year)
         
         # Get user info for copyright
@@ -264,9 +265,6 @@ class GHWrapper:
             ["api", f"repos/{repo}/contents/LICENSE"],
             capture_json=True
         )
-        
-        import base64
-        import json
         
         license_content_b64 = base64.b64encode(license_body.encode()).decode()
         
@@ -325,7 +323,6 @@ class GHWrapper:
             topic_names.append(topic.lower())
         
         # Update topics via API
-        import json
         topics_json = json.dumps({"names": topic_names})
         result = self._run_command(
             ["api", f"repos/{repo}/topics", "-X", "PUT", "--input", "-"],
@@ -357,7 +354,6 @@ class GHWrapper:
         topic_names = [t for t in topic_names if t.lower() != topic.lower()]
         
         # Update topics via API
-        import json
         topics_json = json.dumps({"names": topic_names})
         result = self._run_command(
             ["api", f"repos/{repo}/topics", "-X", "PUT", "--input", "-"],
@@ -514,13 +510,7 @@ class GHWrapper:
         Returns:
             Dict with success status and message
         """
-        import subprocess
-        
         try:
-            # Change to repo directory
-            original_dir = os.getcwd()
-            os.chdir(repo)
-            
             # Create tag locally
             git_cmd = ["git", "tag"]
             if message:
@@ -529,10 +519,9 @@ class GHWrapper:
                 git_cmd.append(tag_name)
             git_cmd.append(target)
             
-            result = subprocess.run(git_cmd, capture_output=True, text=True, check=False)
+            result = subprocess.run(git_cmd, capture_output=True, text=True, check=False, cwd=repo)
             
             if result.returncode != 0:
-                os.chdir(original_dir)
                 return {
                     "success": False,
                     "output": "",
@@ -545,10 +534,9 @@ class GHWrapper:
                 ["git", "push", "origin", tag_name],
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
+                cwd=repo
             )
-            
-            os.chdir(original_dir)
             
             if push_result.returncode != 0:
                 return {
@@ -566,10 +554,6 @@ class GHWrapper:
             }
             
         except Exception as e:
-            try:
-                os.chdir(original_dir)
-            except:
-                pass
             return {
                 "success": False,
                 "output": "",
@@ -589,22 +573,17 @@ class GHWrapper:
         Returns:
             Dict with success status and message
         """
-        import subprocess
-        
         try:
-            original_dir = os.getcwd()
-            os.chdir(repo)
-            
             # Delete local tag
             result = subprocess.run(
                 ["git", "tag", "-d", tag_name],
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
+                cwd=repo
             )
             
             if result.returncode != 0:
-                os.chdir(original_dir)
                 return {
                     "success": False,
                     "output": "",
@@ -618,10 +597,9 @@ class GHWrapper:
                     ["git", "push", "origin", f":refs/tags/{tag_name}"],
                     capture_output=True,
                     text=True,
-                    check=False
+                    check=False,
+                    cwd=repo
                 )
-                
-                os.chdir(original_dir)
                 
                 if push_result.returncode != 0:
                     return {
@@ -630,8 +608,6 @@ class GHWrapper:
                         "error": f"Local tag deleted but remote deletion failed: {push_result.stderr.strip()}",
                         "returncode": push_result.returncode
                     }
-            else:
-                os.chdir(original_dir)
             
             return {
                 "success": True,
@@ -912,7 +888,6 @@ class GHWrapper:
         Returns:
             Dict with result
         """
-        import json
         # Use the Issues API to add assignees (PRs are issues)
         payload = json.dumps({"assignees": assignees})
         args = ["api", f"repos/{repo}/issues/{pr_number}", 
@@ -936,7 +911,6 @@ class GHWrapper:
         Returns:
             Dict with result
         """
-        import json
         # Use the Issues API to add labels (PRs are issues)
         payload = json.dumps({"labels": labels})
         args = ["api", f"repos/{repo}/issues/{pr_number}/labels",
@@ -960,7 +934,6 @@ class GHWrapper:
         Returns:
             Dict with result
         """
-        import json
         # Use the Issues API to remove assignees (PRs are issues)
         payload = json.dumps({"assignees": assignees})
         args = ["api", f"repos/{repo}/issues/{pr_number}/assignees",

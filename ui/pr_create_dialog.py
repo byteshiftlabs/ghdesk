@@ -13,6 +13,11 @@ import git
 
 from core.gh_wrapper import GHWrapper
 from ui.dialogs import show_message_dialog, center_dialog_on_parent
+from ui.constants import (
+    PR_CREATE_DIALOG_WIDTH,
+    PR_CREATE_DIALOG_HEIGHT,
+    PR_CREATE_BODY_MIN_HEIGHT,
+)
 
 
 class CreatePRDialog(QDialog):
@@ -70,7 +75,7 @@ class CreatePRDialog(QDialog):
         self.setWindowTitle("Create Pull Request")
         self.setModal(True)
         self.setWindowModality(Qt.WindowModality.WindowModal)
-        self.resize(700, 600)
+        self.resize(PR_CREATE_DIALOG_WIDTH, PR_CREATE_DIALOG_HEIGHT)
         
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -138,7 +143,7 @@ class CreatePRDialog(QDialog):
             "Why are these changes needed?\n"
             "Any breaking changes?"
         )
-        self.body_edit.setMinimumHeight(150)
+        self.body_edit.setMinimumHeight(PR_CREATE_BODY_MIN_HEIGHT)
         form.addRow("Description:", self.body_edit)
         
         # Draft checkbox

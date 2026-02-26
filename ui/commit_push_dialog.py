@@ -9,52 +9,18 @@ from PyQt6.QtWidgets import (
     QLineEdit, QCheckBox, QGroupBox, QWidget, QTabWidget
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QColor, QTextCharFormat, QSyntaxHighlighter
+from PyQt6.QtGui import QFont
 import git
 from pathlib import Path
 
 from ui.dialogs import show_message_dialog, center_dialog_on_parent, show_confirmation_dialog
-
-
-class DiffHighlighter(QSyntaxHighlighter):
-    """Syntax highlighter for git diffs"""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        
-        self.formats = {}
-        
-        # Added lines (green)
-        add_format = QTextCharFormat()
-        add_format.setForeground(QColor("#28a745"))
-        self.formats['add'] = add_format
-        
-        # Removed lines (red)
-        remove_format = QTextCharFormat()
-        remove_format.setForeground(QColor("#cb2431"))
-        self.formats['remove'] = remove_format
-        
-        # File headers (blue)
-        header_format = QTextCharFormat()
-        header_format.setForeground(QColor("#0366d6"))
-        header_format.setFontWeight(QFont.Weight.Bold)
-        self.formats['header'] = header_format
-        
-        # Hunk headers (cyan)
-        hunk_format = QTextCharFormat()
-        hunk_format.setForeground(QColor("#0969da"))
-        self.formats['hunk'] = hunk_format
-    
-    def highlightBlock(self, text):
-        """Highlight a block of text"""
-        if text.startswith('+') and not text.startswith('+++'):
-            self.setFormat(0, len(text), self.formats['add'])
-        elif text.startswith('-') and not text.startswith('---'):
-            self.setFormat(0, len(text), self.formats['remove'])
-        elif text.startswith('diff --git') or text.startswith('index ') or text.startswith('+++') or text.startswith('---'):
-            self.setFormat(0, len(text), self.formats['header'])
-        elif text.startswith('@@'):
-            self.setFormat(0, len(text), self.formats['hunk'])
+from ui.diff_viewer import DiffHighlighter
+from ui.constants import (
+    COMMIT_PUSH_DIALOG_WIDTH,
+    COMMIT_PUSH_DIALOG_HEIGHT,
+    COMMIT_PUSH_SPLITTER_LEFT,
+    COMMIT_PUSH_SPLITTER_RIGHT,
+)
 
 
 class CommitPushDialog(QDialog):
@@ -93,7 +59,7 @@ class CommitPushDialog(QDialog):
         self.setWindowTitle("Commit and Push Changes")
         self.setModal(True)
         self.setWindowModality(Qt.WindowModality.WindowModal)
-        self.resize(1000, 700)
+        self.resize(COMMIT_PUSH_DIALOG_WIDTH, COMMIT_PUSH_DIALOG_HEIGHT)
         
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -142,7 +108,7 @@ class CommitPushDialog(QDialog):
         right_layout.addWidget(self.diff_viewer)
         
         splitter.addWidget(right_panel)
-        splitter.setSizes([300, 700])
+        splitter.setSizes([COMMIT_PUSH_SPLITTER_LEFT, COMMIT_PUSH_SPLITTER_RIGHT])
         
         # Commit section
         commit_group = QGroupBox("Commit")

@@ -15,6 +15,11 @@ from typing import Optional, Dict, Any
 
 from core.gh_wrapper import GHWrapper
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
+from ui.constants import (
+    PR_DETAIL_CONTENT_MARGIN,
+    PR_DETAIL_CONTENT_SPACING,
+    PR_DETAIL_LABEL_SPACING,
+)
 
 
 class PRDetailView(QWidget):
@@ -50,8 +55,11 @@ class PRDetailView(QWidget):
         # Content widget
         content = QWidget()
         self.content_layout = QVBoxLayout()
-        self.content_layout.setContentsMargins(16, 16, 16, 16)
-        self.content_layout.setSpacing(16)
+        self.content_layout.setContentsMargins(
+            PR_DETAIL_CONTENT_MARGIN, PR_DETAIL_CONTENT_MARGIN,
+            PR_DETAIL_CONTENT_MARGIN, PR_DETAIL_CONTENT_MARGIN
+        )
+        self.content_layout.setSpacing(PR_DETAIL_CONTENT_SPACING)
         content.setLayout(self.content_layout)
         scroll.setWidget(content)
         
@@ -261,7 +269,7 @@ class PRDetailView(QWidget):
             labels_widget = QWidget()
             labels_inner_layout = QHBoxLayout()
             labels_inner_layout.setContentsMargins(0, 0, 0, 0)
-            labels_inner_layout.setSpacing(4)
+            labels_inner_layout.setSpacing(PR_DETAIL_LABEL_SPACING)
             labels_widget.setLayout(labels_inner_layout)
             
             for label in labels[:5]:  # Show max 5 labels

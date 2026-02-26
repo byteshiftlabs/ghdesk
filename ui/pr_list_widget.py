@@ -13,6 +13,11 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 
 from core.gh_wrapper import GHWrapper
+from ui.constants import (
+    PR_LIST_FILTER_SPACING,
+    PR_LIST_AUTHOR_FILTER_WIDTH,
+    PR_LIST_REFRESH_BUTTON_WIDTH,
+)
 
 
 class PRListWidget(QWidget):
@@ -64,13 +69,13 @@ class PRListWidget(QWidget):
         self.state_combo.currentTextChanged.connect(self.on_filter_changed)
         layout.addWidget(self.state_combo)
         
-        layout.addSpacing(16)
+        layout.addSpacing(PR_LIST_FILTER_SPACING)
         
         # Author filter
         layout.addWidget(QLabel("Author:"))
         self.author_edit = QLineEdit()
         self.author_edit.setPlaceholderText("Filter by username...")
-        self.author_edit.setMaximumWidth(200)
+        self.author_edit.setMaximumWidth(PR_LIST_AUTHOR_FILTER_WIDTH)
         self.author_edit.textChanged.connect(self.on_filter_changed)
         layout.addWidget(self.author_edit)
         
@@ -78,7 +83,7 @@ class PRListWidget(QWidget):
         
         # Refresh button
         refresh_btn = QPushButton("↻ Refresh")
-        refresh_btn.setMaximumWidth(100)
+        refresh_btn.setMaximumWidth(PR_LIST_REFRESH_BUTTON_WIDTH)
         refresh_btn.clicked.connect(self.load_prs)
         layout.addWidget(refresh_btn)
         
