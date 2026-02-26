@@ -1,14 +1,7 @@
 """
 Modern styling for ghdesk
+Theme CSS definitions
 """
-
-THEMES = {
-    "dark": "Dark",
-    "light": "Light",
-    "nord": "Nord",
-    "dracula": "Dracula",
-    "monokai": "Monokai"
-}
 
 DARK_THEME = """
 QMainWindow {

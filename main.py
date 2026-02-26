@@ -5,10 +5,13 @@ Entry point for the application
 """
 
 import sys
+
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
+
 from ui.main_window import MainWindow
 from ui.themes import get_theme
+from ui.constants import APP_NAME, ORGANIZATION_NAME
 
 
 def main():
@@ -19,8 +22,8 @@ def main():
     )
     
     app = QApplication(sys.argv)
-    app.setApplicationName("ghdesk")
-    app.setOrganizationName("cmelnulabs")
+    app.setApplicationName(APP_NAME)
+    app.setOrganizationName(ORGANIZATION_NAME)
     
     # Apply default dark theme
     app.setStyleSheet(get_theme("dark"))

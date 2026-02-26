@@ -16,6 +16,12 @@ from core.gh_wrapper import GHWrapper
 from core.repo_manager import RepoManager
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
 from ui.license_dialog import LicenseDialog
+from ui.constants import (
+    COLUMN_WIDTH_NAME, COLUMN_WIDTH_OWNER, COLUMN_WIDTH_PATH,
+    COLUMN_WIDTH_DESCRIPTION, COLUMN_WIDTH_BRANCH, COLUMN_WIDTH_STATUS,
+    COLUMN_WIDTH_VISIBILITY, COLUMN_WIDTH_LICENSE, COLUMN_WIDTH_UPDATED,
+    COLUMN_WIDTH_REMOTE
+)
 
 
 class LoadReposThread(QThread):
@@ -79,15 +85,15 @@ class RepoView(QWidget):
         for i in range(col_count):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Interactive)
         
-        self.table.setColumnWidth(0, 180)  # Name
-        self.table.setColumnWidth(1, 120)  # Owner/Path
-        self.table.setColumnWidth(2, 150)  # Description/Branch
-        self.table.setColumnWidth(3, 100)  # Visibility/Status
+        self.table.setColumnWidth(0, COLUMN_WIDTH_NAME)
+        self.table.setColumnWidth(1, COLUMN_WIDTH_PATH if self.is_local else COLUMN_WIDTH_OWNER)
+        self.table.setColumnWidth(2, COLUMN_WIDTH_BRANCH if self.is_local else COLUMN_WIDTH_DESCRIPTION)
+        self.table.setColumnWidth(3, COLUMN_WIDTH_STATUS if self.is_local else COLUMN_WIDTH_VISIBILITY)
         if not self.is_local:
-            self.table.setColumnWidth(4, 120)  # License
-            self.table.setColumnWidth(5, 100)  # Updated
+            self.table.setColumnWidth(4, COLUMN_WIDTH_LICENSE)
+            self.table.setColumnWidth(5, COLUMN_WIDTH_UPDATED)
         else:
-            self.table.setColumnWidth(4, 200)  # Remote
+            self.table.setColumnWidth(4, COLUMN_WIDTH_REMOTE)
         
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
