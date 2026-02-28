@@ -117,9 +117,8 @@ class ReposMixin:
             args.extend(["--description", kwargs["description"]])
         if "visibility" in kwargs:
             args.extend(["--visibility", kwargs["visibility"]])
-            # Required flag when changing to public
-            if kwargs["visibility"] == "public":
-                args.append("--accept-visibility-change-consequences")
+            # Required flag for any visibility change
+            args.append("--accept-visibility-change-consequences")
         if "homepage" in kwargs:
             args.extend(["--homepage", kwargs["homepage"]])
         

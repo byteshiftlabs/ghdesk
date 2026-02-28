@@ -9,7 +9,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel,
     QTableWidget, QTableWidgetItem, QTextEdit, QPushButton,
     QHeaderView, QGroupBox, QFormLayout, QFrame, QScrollArea,
-    QInputDialog, QLineEdit, QDialog, QDialogButtonBox
+    QInputDialog, QLineEdit, QDialog, QDialogButtonBox,
+    QLayout, QSizePolicy, QWidgetItem
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QRect, QPoint
 from PyQt6.QtGui import QFont, QCursor
@@ -17,6 +18,81 @@ from PyQt6.QtGui import QFont, QCursor
 from core.gh_wrapper import GHWrapper
 from core.git_operations import load_repo_details
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
+
+
+class FlowLayout(QLayout):
+    """A layout that arranges widgets horizontally and wraps to next line when full"""
+    
+    def __init__(self, parent=None, margin=0, spacing=-1):
+        super().__init__(parent)
+        self._items = []
+        self._h_spacing = spacing if spacing >= 0 else 6
+        self._v_spacing = spacing if spacing >= 0 else 6
+        self.setContentsMargins(margin, margin, margin, margin)
+    
+    def addItem(self, item):
+        self._items.append(item)
+    
+    def count(self):
+        return len(self._items)
+    
+    def itemAt(self, index):
+        if 0 <= index < len(self._items):
+            return self._items[index]
+        return None
+    
+    def takeAt(self, index):
+        if 0 <= index < len(self._items):
+            return self._items.pop(index)
+        return None
+    
+    def hasHeightForWidth(self):
+        return True
+    
+    def heightForWidth(self, width):
+        return self._do_layout(QRect(0, 0, width, 0), test_only=True)
+    
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._do_layout(rect, test_only=False)
+    
+    def sizeHint(self):
+        return self.minimumSize()
+    
+    def minimumSize(self):
+        size = QSize()
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+        margins = self.contentsMargins()
+        size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+        return size
+    
+    def _do_layout(self, rect, test_only):
+        margins = self.contentsMargins()
+        effective_rect = rect.adjusted(margins.left(), margins.top(), -margins.right(), -margins.bottom())
+        x = effective_rect.x()
+        y = effective_rect.y()
+        line_height = 0
+        
+        for item in self._items:
+            widget = item.widget()
+            space_x = self._h_spacing
+            space_y = self._v_spacing
+            
+            next_x = x + item.sizeHint().width() + space_x
+            if next_x - space_x > effective_rect.right() and line_height > 0:
+                x = effective_rect.x()
+                y = y + line_height + space_y
+                next_x = x + item.sizeHint().width() + space_x
+                line_height = 0
+            
+            if not test_only:
+                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
+            
+            x = next_x
+            line_height = max(line_height, item.sizeHint().height())
+        
+        return y + line_height - rect.y() + margins.bottom()
 
 
 class LoadRepoDetailsThread(QThread):
@@ -266,17 +342,17 @@ class RepoDetailView(QWidget):
         # Scrollable area for topics
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setMinimumHeight(150)
-        scroll.setMaximumHeight(400)
+        scroll.setMinimumHeight(100)
+        scroll.setMaximumHeight(300)
         
-        # Container for topic badges
+        # Container for topic badges using flow layout
         self.topics_container = QWidget()
-        self.topics_layout = QVBoxLayout()
-        self.topics_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.topics_layout = FlowLayout(margin=8, spacing=6)
         self.topics_container.setLayout(self.topics_layout)
         scroll.setWidget(self.topics_container)
         
         layout.addWidget(scroll)
+        layout.addStretch()
         
         return widget
     
@@ -466,7 +542,7 @@ class RepoDetailView(QWidget):
             self.header.setText(f"Failed to load {repo_full_name}")
     
     def display_topics(self):
-        """Display topics as interactive badges"""
+        """Display topics as compact flowing badges"""
         # Clear existing widgets
         while self.topics_layout.count():
             child = self.topics_layout.takeAt(0)
@@ -479,58 +555,70 @@ class RepoDetailView(QWidget):
             self.topics_layout.addWidget(no_topics)
             return
         
-        # Create a simple vertical list of topics
+        # Create compact badges that flow horizontally
         for topic in self.current_topics:
             topic_name = topic.get("name", "") if isinstance(topic, dict) else str(topic)
             if not topic_name:
                 continue
             
-            # Create horizontal container for each topic
-            topic_row = QWidget()
-            topic_row_layout = QHBoxLayout()
-            topic_row_layout.setContentsMargins(4, 4, 4, 4)
-            topic_row_layout.setSpacing(8)
-            topic_row.setLayout(topic_row_layout)
+            # Create compact badge container
+            badge = QWidget()
+            badge_layout = QHBoxLayout()
+            badge_layout.setContentsMargins(0, 0, 0, 0)
+            badge_layout.setSpacing(0)
+            badge.setLayout(badge_layout)
             
-            # Topic badge
+            # Topic text label
             topic_label = QLabel(f" {topic_name} ")
             topic_label.setStyleSheet("""
                 QLabel {
                     background: #0969da;
                     color: white;
-                    padding: 6px 14px;
-                    border-radius: 16px;
-                    font-size: 13px;
+                    padding: 4px 8px;
+                    border-top-left-radius: 12px;
+                    border-bottom-left-radius: 12px;
+                    font-size: 12px;
                     font-weight: 500;
                 }
             """)
-            topic_row_layout.addWidget(topic_label)
+            badge_layout.addWidget(topic_label)
             
-            # Delete button (if applicable)
+            # Inline X button for removal
             if self.current_repo_full_name:
-                delete_btn = QPushButton("Remove")
-                delete_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-                delete_btn.setStyleSheet("""
+                x_btn = QPushButton("×")
+                x_btn.setFixedSize(24, 24)
+                x_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+                x_btn.setStyleSheet("""
                     QPushButton {
-                        background: transparent;
-                        color: #cf222e;
-                        border: 1px solid #cf222e;
-                        border-radius: 6px;
-                        padding: 4px 10px;
-                        font-size: 12px;
+                        background: #0550ae;
+                        color: white;
+                        border: none;
+                        border-top-right-radius: 12px;
+                        border-bottom-right-radius: 12px;
+                        font-size: 14px;
+                        font-weight: bold;
+                        padding: 0;
                     }
                     QPushButton:hover {
                         background: #cf222e;
-                        color: white;
                     }
                 """)
-                delete_btn.clicked.connect(lambda checked, t=topic_name: self.remove_topic(t))
-                topic_row_layout.addWidget(delete_btn)
+                x_btn.clicked.connect(lambda checked, t=topic_name: self.remove_topic(t))
+                badge_layout.addWidget(x_btn)
+            else:
+                # Round right side if no X button
+                topic_label.setStyleSheet("""
+                    QLabel {
+                        background: #0969da;
+                        color: white;
+                        padding: 4px 10px;
+                        border-radius: 12px;
+                        font-size: 12px;
+                        font-weight: 500;
+                    }
+                """)
             
-            topic_row_layout.addStretch()
-            self.topics_layout.addWidget(topic_row)
-        
-        self.topics_layout.addStretch()
+            self.topics_layout.addWidget(badge)
     
     def add_topic(self):
         """Add a new topic to the repository"""
