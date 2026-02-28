@@ -13,6 +13,16 @@ from PyQt6.QtGui import QFont, QShowEvent
 
 from core.licenses import LICENSES, LICENSE_ORDER, get_license_by_id
 from ui.dialogs import center_dialog_on_parent
+from ui.styles import (
+    STYLE_HEADER_MEDIUM, STYLE_INFO_TEXT_MUTED, STYLE_LABEL_BOLD_SMALL,
+    STYLE_HEADER_LARGE, STYLE_DESCRIPTION, STYLE_NORMAL_TEXT, get_info_box_style
+)
+from ui.constants import (
+    LICENSE_DIALOG_WIDTH, LICENSE_DIALOG_HEIGHT, LICENSE_SPLITTER_LEFT,
+    LICENSE_SPLITTER_RIGHT, LICENSE_LIST_MIN_WIDTH, MARGIN_NONE, MARGIN_SMALL,
+    MARGIN_MEDIUM, MARGIN_XLARGE, SPACING_SMALL, SPACING_MEDIUM, SPACING_LARGE,
+    BUTTON_MIN_WIDTH_MEDIUM, BUTTON_MIN_WIDTH_LARGE
+)
 
 
 class LicenseDialog(QDialog):
@@ -40,21 +50,21 @@ class LicenseDialog(QDialog):
         self.setWindowTitle(f"Change License - {self.repo_name}")
         self.setModal(True)
         self.setWindowModality(Qt.WindowModality.WindowModal)
-        self.resize(800, 550)
+        self.resize(LICENSE_DIALOG_WIDTH, LICENSE_DIALOG_HEIGHT)
         
         layout = QVBoxLayout()
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(MARGIN_XLARGE, MARGIN_XLARGE, MARGIN_XLARGE, MARGIN_XLARGE)
+        layout.setSpacing(SPACING_LARGE)
         self.setLayout(layout)
         
         # Header
         header = QLabel("Select a License")
-        header.setStyleSheet("font-size: 14px; font-weight: bold;")
+        header.setStyleSheet(STYLE_HEADER_MEDIUM)
         layout.addWidget(header)
         
         if self.current_license:
             current_label = QLabel(f"Current license: {self.current_license}")
-            current_label.setStyleSheet("font-size: 11px; color: #888;")
+            current_label.setStyleSheet(STYLE_INFO_TEXT_MUTED)
             layout.addWidget(current_label)
         
         # Main content with splitter
@@ -64,15 +74,15 @@ class LicenseDialog(QDialog):
         # Left side - License list
         left_widget = QWidget()
         left_layout = QVBoxLayout()
-        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setContentsMargins(MARGIN_NONE, MARGIN_NONE, MARGIN_NONE, MARGIN_NONE)
         left_widget.setLayout(left_layout)
         
         list_label = QLabel("Available Licenses")
-        list_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        list_label.setStyleSheet(STYLE_LABEL_BOLD_SMALL)
         left_layout.addWidget(list_label)
         
         self.license_list = QListWidget()
-        self.license_list.setMinimumWidth(200)
+        self.license_list.setMinimumWidth(LICENSE_LIST_MIN_WIDTH)
         self.populate_license_list()
         self.license_list.currentItemChanged.connect(self.on_license_selected)
         left_layout.addWidget(self.license_list)
@@ -82,8 +92,8 @@ class LicenseDialog(QDialog):
         # Right side - License details
         right_widget = QWidget()
         right_layout = QVBoxLayout()
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(8)
+        right_layout.setContentsMargins(MARGIN_NONE, MARGIN_NONE, MARGIN_NONE, MARGIN_NONE)
+        right_layout.setSpacing(SPACING_MEDIUM)
         right_widget.setLayout(right_layout)
         
         # Detail scroll area
@@ -93,27 +103,27 @@ class LicenseDialog(QDialog):
         
         self.detail_widget = QWidget()
         self.detail_layout = QVBoxLayout()
-        self.detail_layout.setContentsMargins(8, 8, 8, 8)
-        self.detail_layout.setSpacing(12)
+        self.detail_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        self.detail_layout.setSpacing(SPACING_LARGE)
         self.detail_widget.setLayout(self.detail_layout)
         
         scroll.setWidget(self.detail_widget)
         right_layout.addWidget(scroll)
         
         splitter.addWidget(right_widget)
-        splitter.setSizes([250, 550])
+        splitter.setSizes([LICENSE_SPLITTER_LEFT, LICENSE_SPLITTER_RIGHT])
         
         # Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setMinimumWidth(80)
+        cancel_btn.setMinimumWidth(BUTTON_MIN_WIDTH_MEDIUM)
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
         
         self.apply_btn = QPushButton("Apply License")
-        self.apply_btn.setMinimumWidth(100)
+        self.apply_btn.setMinimumWidth(BUTTON_MIN_WIDTH_LARGE)
         self.apply_btn.setEnabled(False)
         self.apply_btn.clicked.connect(self.accept)
         button_layout.addWidget(self.apply_btn)
@@ -162,19 +172,19 @@ class LicenseDialog(QDialog):
         
         # License name
         name_label = QLabel(license_info.get("name", license_key))
-        name_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        name_label.setStyleSheet(STYLE_HEADER_LARGE)
         name_label.setWordWrap(True)
         self.detail_layout.addWidget(name_label)
         
         # SPDX ID
         spdx_label = QLabel(f"SPDX ID: {license_info.get('spdx_id', 'N/A')}")
-        spdx_label.setStyleSheet("font-size: 11px; color: #888;")
+        spdx_label.setStyleSheet(STYLE_INFO_TEXT_MUTED)
         self.detail_layout.addWidget(spdx_label)
         
         # Description
         desc_label = QLabel(license_info.get("description", ""))
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("font-size: 12px; margin-top: 8px;")
+        desc_label.setStyleSheet(STYLE_DESCRIPTION)
         self.detail_layout.addWidget(desc_label)
         
         # Best for
@@ -212,32 +222,17 @@ class LicenseDialog(QDialog):
     def create_info_box(self, title: str, items: list, color: str) -> QGroupBox:
         """Create a styled info box with a list of items"""
         box = QGroupBox(title)
-        box.setStyleSheet(f"""
-            QGroupBox {{
-                font-weight: bold;
-                font-size: 12px;
-                border: 1px solid {color};
-                border-radius: 4px;
-                margin-top: 8px;
-                padding-top: 8px;
-            }}
-            QGroupBox::title {{
-                color: {color};
-                subcontrol-origin: margin;
-                left: 8px;
-                padding: 0 4px;
-            }}
-        """)
+        box.setStyleSheet(get_info_box_style(color))
         
         box_layout = QVBoxLayout()
-        box_layout.setContentsMargins(8, 4, 8, 8)
-        box_layout.setSpacing(4)
+        box_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_SMALL, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        box_layout.setSpacing(SPACING_SMALL)
         box.setLayout(box_layout)
         
         for item in items:
             item_label = QLabel(f"• {item}")
             item_label.setWordWrap(True)
-            item_label.setStyleSheet("font-size: 11px; font-weight: normal;")
+            item_label.setStyleSheet(STYLE_NORMAL_TEXT)
             box_layout.addWidget(item_label)
         
         return box

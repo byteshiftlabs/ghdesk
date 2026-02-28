@@ -20,7 +20,7 @@ from ui.constants import (
     COLUMN_WIDTH_NAME, COLUMN_WIDTH_OWNER, COLUMN_WIDTH_PATH,
     COLUMN_WIDTH_DESCRIPTION, COLUMN_WIDTH_BRANCH, COLUMN_WIDTH_STATUS,
     COLUMN_WIDTH_VISIBILITY, COLUMN_WIDTH_LICENSE, COLUMN_WIDTH_UPDATED,
-    COLUMN_WIDTH_REMOTE
+    COLUMN_WIDTH_REMOTE, LOCAL_REPO_COLUMNS, REMOTE_REPO_COLUMNS
 )
 
 
@@ -70,7 +70,7 @@ class RepoView(QWidget):
         
         # Repository table
         self.table = QTableWidget()
-        self.table.setColumnCount(5 if self.is_local else 6)
+        self.table.setColumnCount(LOCAL_REPO_COLUMNS if self.is_local else REMOTE_REPO_COLUMNS)
         
         if self.is_local:
             headers = ["Name", "Path", "Branch", "Status", "Remote"]
@@ -80,7 +80,7 @@ class RepoView(QWidget):
         self.table.setHorizontalHeaderLabels(headers)
         # Set uniform column widths - all Interactive so user can resize
         header = self.table.horizontalHeader()
-        col_count = 5 if self.is_local else 6
+        col_count = LOCAL_REPO_COLUMNS if self.is_local else REMOTE_REPO_COLUMNS
         
         for i in range(col_count):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Interactive)

@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox, QCheckBox, QSizePolicy, QApplication, QStyle
 )
 from PyQt6.QtCore import Qt, QTimer
+from ui.styles import STYLE_HEADER_SMALL, STYLE_INFO_TEXT
+from ui.constants import MARGIN_LARGE, SPACING_MEDIUM, BUTTON_MIN_WIDTH_SMALL
 
 
 def center_dialog_on_parent(dialog: QDialog):
@@ -56,20 +58,20 @@ def show_message_dialog(parent, title: str, main_text: str, info_text: str = Non
     dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
     
     layout = QVBoxLayout()
-    layout.setContentsMargins(12, 12, 12, 12)
-    layout.setSpacing(8)
+    layout.setContentsMargins(MARGIN_LARGE, MARGIN_LARGE, MARGIN_LARGE, MARGIN_LARGE)
+    layout.setSpacing(SPACING_MEDIUM)
     dialog.setLayout(layout)
     
     # Main text
     main_label = QLabel(main_text)
-    main_label.setStyleSheet("font-size: 12px; font-weight: bold;")
+    main_label.setStyleSheet(STYLE_HEADER_SMALL)
     main_label.setWordWrap(True)
     layout.addWidget(main_label)
     
     # Info text (optional)
     if info_text:
         info_label = QLabel(info_text)
-        info_label.setStyleSheet("font-size: 11px; color: #b8c0cc;")
+        info_label.setStyleSheet(STYLE_INFO_TEXT)
         info_label.setWordWrap(True)
         info_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(info_label)
@@ -77,7 +79,7 @@ def show_message_dialog(parent, title: str, main_text: str, info_text: str = Non
     # OK button
     button_box = QDialogButtonBox()
     ok_btn = QPushButton("OK")
-    ok_btn.setMinimumWidth(70)
+    ok_btn.setMinimumWidth(BUTTON_MIN_WIDTH_SMALL)
     ok_btn.clicked.connect(dialog.accept)
     button_box.addButton(ok_btn, QDialogButtonBox.ButtonRole.AcceptRole)
     layout.addWidget(button_box)
@@ -115,20 +117,20 @@ def show_confirmation_dialog(parent, title: str, main_text: str, info_text: str 
     dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
     
     layout = QVBoxLayout()
-    layout.setContentsMargins(12, 12, 12, 12)
-    layout.setSpacing(8)
+    layout.setContentsMargins(MARGIN_LARGE, MARGIN_LARGE, MARGIN_LARGE, MARGIN_LARGE)
+    layout.setSpacing(SPACING_MEDIUM)
     dialog.setLayout(layout)
     
     # Main text
     main_label = QLabel(main_text)
-    main_label.setStyleSheet("font-size: 12px; font-weight: bold;")
+    main_label.setStyleSheet(STYLE_HEADER_SMALL)
     main_label.setWordWrap(True)
     layout.addWidget(main_label)
     
     # Info text (optional)
     if info_text:
         info_label = QLabel(info_text)
-        info_label.setStyleSheet("font-size: 11px; color: #b8c0cc;")
+        info_label.setStyleSheet(STYLE_INFO_TEXT)
         info_label.setWordWrap(True)
         info_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(info_label)
@@ -142,10 +144,10 @@ def show_confirmation_dialog(parent, title: str, main_text: str, info_text: str 
     # Buttons
     button_box = QDialogButtonBox()
     yes_btn = QPushButton(yes_text)
-    yes_btn.setMinimumWidth(70)
+    yes_btn.setMinimumWidth(BUTTON_MIN_WIDTH_SMALL)
     yes_btn.clicked.connect(dialog.accept)
     no_btn = QPushButton(no_text)
-    no_btn.setMinimumWidth(70)
+    no_btn.setMinimumWidth(BUTTON_MIN_WIDTH_SMALL)
     no_btn.clicked.connect(dialog.reject)
     button_box.addButton(yes_btn, QDialogButtonBox.ButtonRole.AcceptRole)
     button_box.addButton(no_btn, QDialogButtonBox.ButtonRole.RejectRole)

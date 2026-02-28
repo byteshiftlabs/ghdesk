@@ -15,11 +15,14 @@ from pathlib import Path
 from core.git_operations import GitRepository
 from ui.dialogs import show_message_dialog, center_dialog_on_parent, show_confirmation_dialog
 from ui.diff_viewer import DiffHighlighter
+from ui.styles import STYLE_LABEL_BOLD, COLOR_STAGED_FILE, COLOR_MODIFIED_FILE
 from ui.constants import (
     COMMIT_PUSH_DIALOG_WIDTH,
     COMMIT_PUSH_DIALOG_HEIGHT,
     COMMIT_PUSH_SPLITTER_LEFT,
     COMMIT_PUSH_SPLITTER_RIGHT,
+    MARGIN_NONE, INPUT_MAX_HEIGHT,
+    FONT_MONOSPACE, FONT_SIZE_MONOSPACE
 )
 
 
@@ -78,11 +81,11 @@ class CommitPushDialog(QDialog):
         # Left panel - File list
         left_panel = QWidget()
         left_layout = QVBoxLayout()
-        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setContentsMargins(MARGIN_NONE, MARGIN_NONE, MARGIN_NONE, MARGIN_NONE)
         left_panel.setLayout(left_layout)
         
         left_label = QLabel("Modified Files")
-        left_label.setStyleSheet("font-weight: bold; padding: 5px;")
+        left_label.setStyleSheet(STYLE_LABEL_BOLD)
         left_layout.addWidget(left_label)
         
         self.file_list = QListWidget()
@@ -94,16 +97,16 @@ class CommitPushDialog(QDialog):
         # Right panel - Diff viewer
         right_panel = QWidget()
         right_layout = QVBoxLayout()
-        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setContentsMargins(MARGIN_NONE, MARGIN_NONE, MARGIN_NONE, MARGIN_NONE)
         right_panel.setLayout(right_layout)
         
         right_label = QLabel("Diff Preview")
-        right_label.setStyleSheet("font-weight: bold; padding: 5px;")
+        right_label.setStyleSheet(STYLE_LABEL_BOLD)
         right_layout.addWidget(right_label)
         
         self.diff_viewer = QTextEdit()
         self.diff_viewer.setReadOnly(True)
-        self.diff_viewer.setFont(QFont("Monospace", 9))
+        self.diff_viewer.setFont(QFont(FONT_MONOSPACE, FONT_SIZE_MONOSPACE))
         self.highlighter = DiffHighlighter(self.diff_viewer.document())
         right_layout.addWidget(self.diff_viewer)
         
@@ -117,7 +120,7 @@ class CommitPushDialog(QDialog):
         
         commit_layout.addWidget(QLabel("Commit message:"))
         self.commit_message = QTextEdit()
-        self.commit_message.setMaximumHeight(100)
+        self.commit_message.setMaximumHeight(INPUT_MAX_HEIGHT)
         self.commit_message.setPlaceholderText("Enter commit message...")
         commit_layout.addWidget(self.commit_message)
         
@@ -175,14 +178,14 @@ class CommitPushDialog(QDialog):
             if file_path not in modified:
                 item = QListWidgetItem(f"✅ {file_path} (staged)")
                 item.setData(Qt.ItemDataRole.UserRole, {"path": file_path, "type": "staged"})
-                item.setForeground(QColor("#28a745"))
+                item.setForeground(QColor(COLOR_STAGED_FILE))
                 self.file_list.addItem(item)
         
         # Add untracked files
         for file_path in untracked:
             item = QListWidgetItem(f"❓ {file_path} (untracked)")
             item.setData(Qt.ItemDataRole.UserRole, {"path": file_path, "type": "untracked"})
-            item.setForeground(QColor("#ffa500"))
+            item.setForeground(QColor(COLOR_MODIFIED_FILE))
             self.file_list.addItem(item)
         
         if self.file_list.count() == 0:

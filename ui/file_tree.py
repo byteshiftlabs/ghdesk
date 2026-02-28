@@ -6,10 +6,12 @@ import os
 from pathlib import Path
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QLineEdit, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal
+from ui.styles import STYLE_HEADER_PANEL, STYLE_INPUT_ERROR
+from ui.constants import MARGIN_NONE
 
 
 class FileTreeWidget(QWidget):
-    """Widget displaying filesystem tree"""
+    """Widget displaying filesystem tree\"\"\"
     
     directory_selected = pyqtSignal(str)  # Emitted when a directory is selected
     
@@ -19,14 +21,14 @@ class FileTreeWidget(QWidget):
         self.populate_root()
     
     def init_ui(self):
-        """Initialize the user interface"""
+        \"\"\"Initialize the user interface\"\"\"
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(MARGIN_NONE, MARGIN_NONE, MARGIN_NONE, MARGIN_NONE)
         self.setLayout(layout)
         
         # Header
         header = QLabel("Filesystem")
-        header.setStyleSheet("font-weight: 600; font-size: 14px; padding: 8px;")
+        header.setStyleSheet(STYLE_HEADER_PANEL)
         layout.addWidget(header)
         
         # Path input
@@ -128,5 +130,5 @@ class FileTreeWidget(QWidget):
             # Could expand the tree to show this path, but that's complex
             # For now, just emit the signal
         else:
-            self.path_input.setStyleSheet("border: 1px solid #c42b1c;")
+            self.path_input.setStyleSheet(STYLE_INPUT_ERROR)
             # Reset style after a delay would be nice, but keep it simple for now

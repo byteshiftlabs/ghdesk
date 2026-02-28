@@ -13,10 +13,12 @@ from PyQt6.QtGui import QShowEvent
 from core.gh_wrapper import GHWrapper
 from core.git_operations import GitRepository
 from ui.dialogs import show_message_dialog, center_dialog_on_parent
+from ui.styles import STYLE_INFO_TEXT_PADDED
 from ui.constants import (
     PR_CREATE_DIALOG_WIDTH,
     PR_CREATE_DIALOG_HEIGHT,
     PR_CREATE_BODY_MIN_HEIGHT,
+    LIST_MAX_HEIGHT_SMALL
 )
 
 
@@ -145,7 +147,7 @@ class CreatePRDialog(QDialog):
         # Assignees
         assignees_label = QLabel("Assignees:")
         self.assignees_list = QListWidget()
-        self.assignees_list.setMaximumHeight(100)
+        self.assignees_list.setMaximumHeight(LIST_MAX_HEIGHT_SMALL)
         self.assignees_list.setSelectionMode(
             QListWidget.SelectionMode.MultiSelection
         )
@@ -159,7 +161,7 @@ class CreatePRDialog(QDialog):
         # Labels
         labels_label = QLabel("Labels:")
         self.labels_list = QListWidget()
-        self.labels_list.setMaximumHeight(100)
+        self.labels_list.setMaximumHeight(LIST_MAX_HEIGHT_SMALL)
         self.labels_list.setSelectionMode(
             QListWidget.SelectionMode.MultiSelection
         )
@@ -181,7 +183,7 @@ class CreatePRDialog(QDialog):
             "You can also add reviewers after creation on GitHub."
         )
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: #666; font-size: 11px; padding: 10px;")
+        info_label.setStyleSheet(STYLE_INFO_TEXT_PADDED)
         layout.addWidget(info_label)
         
         layout.addStretch()

@@ -13,6 +13,8 @@ from PyQt6.QtGui import QShowEvent
 from core.gh_wrapper import GHWrapper
 from core.git_operations import GitRepository
 from ui.dialogs import show_message_dialog, center_dialog_on_parent
+from ui.styles import STYLE_INFO_TEXT_PADDED
+from ui.constants import TAG_DIALOG_WIDTH, TAG_DIALOG_HEIGHT, INPUT_MAX_HEIGHT
 
 
 class CreateTagDialog(QDialog):
@@ -46,7 +48,7 @@ class CreateTagDialog(QDialog):
         self.setWindowTitle("Create Tag")
         self.setModal(True)
         self.setWindowModality(Qt.WindowModality.WindowModal)
-        self.resize(500, 350)
+        self.resize(TAG_DIALOG_WIDTH, TAG_DIALOG_HEIGHT)
         
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -77,13 +79,13 @@ class CreateTagDialog(QDialog):
         # Message (optional)
         self.message_edit = QTextEdit()
         self.message_edit.setPlaceholderText("Optional: Add a message to create an annotated tag...")
-        self.message_edit.setMaximumHeight(100)
+        self.message_edit.setMaximumHeight(INPUT_MAX_HEIGHT)
         form.addRow("Message:", self.message_edit)
         
         # Info label
         info_label = QLabel("💡 The tag will be created locally and pushed to the remote repository.")
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: #666; font-size: 11px; padding: 10px;")
+        info_label.setStyleSheet(STYLE_INFO_TEXT_PADDED)
         layout.addWidget(info_label)
         
         layout.addStretch()
