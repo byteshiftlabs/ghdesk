@@ -154,7 +154,9 @@ class RepoView(QWidget):
         
         for row, repo in enumerate(repos):
             if self.is_local:
-                self.table.setItem(row, 0, QTableWidgetItem(repo.get("name", "")))
+                name_item = QTableWidgetItem(repo.get("name", ""))
+                name_item.setData(Qt.ItemDataRole.UserRole + 1, row)  # Store original index
+                self.table.setItem(row, 0, name_item)
                 self.table.setItem(row, 1, QTableWidgetItem(repo.get("path", "")))
                 self.table.setItem(row, 2, QTableWidgetItem(repo.get("branch", "")))
                 self.table.setItem(row, 3, QTableWidgetItem(repo.get("status", "")))
@@ -165,8 +167,9 @@ class RepoView(QWidget):
                 visibility_text = "Private" if is_private else "Public"
                 
                 name_item = QTableWidgetItem(repo.get("name", ""))
-                # Store the full repo name in the item data for later retrieval
+                # Store the full repo name and original index for later retrieval
                 name_item.setData(Qt.ItemDataRole.UserRole, f"{owner}/{repo.get('name', '')}")
+                name_item.setData(Qt.ItemDataRole.UserRole + 1, row)  # Store original index
                 self.table.setItem(row, 0, name_item)
                 self.table.setItem(row, 1, QTableWidgetItem(owner))
                 self.table.setItem(row, 2, QTableWidgetItem(repo.get("description", "")))
@@ -194,15 +197,23 @@ class RepoView(QWidget):
         
         self.table.setSortingEnabled(True)
     
+    def _get_repo_for_row(self, visual_row: int):
+        """Get repo dict for a visual row, accounting for sorting"""
+        name_item = self.table.item(visual_row, 0)
+        if name_item:
+            original_index = name_item.data(Qt.ItemDataRole.UserRole + 1)
+            if original_index is not None and 0 <= original_index < len(self.repos):
+                return self.repos[original_index]
+        return None
+    
     def on_row_clicked(self, index):
         """Handle click on a row"""
         row = index.row()
         
         if self.is_local:
-            # For local repos, use the repos list with index
-            if row < 0 or row >= len(self.repos):
+            repo = self._get_repo_for_row(row)
+            if not repo:
                 return
-            repo = self.repos[row]
             path = repo.get("path", "")
             if path:
                 self.repo_selected.emit(path)
@@ -223,7 +234,10 @@ class RepoView(QWidget):
             return
         
         row = selected_rows[0].row()
-        repo = self.repos[row]
+        repo = self._get_repo_for_row(row)
+        if not repo:
+            show_message_dialog(self, "Error", "Could not find repository data")
+            return
         owner = repo.get("owner", {}).get("login", "")
         name = repo.get("name", "")
         repo_full = f"{owner}/{name}"
@@ -289,7 +303,10 @@ class RepoView(QWidget):
             return
         
         row = selected_rows[0].row()
-        repo = self.repos[row]
+        repo = self._get_repo_for_row(row)
+        if not repo:
+            show_message_dialog(self, "Error", "Could not find repository data")
+            return
         owner = repo.get("owner", {}).get("login", "")
         name = repo.get("name", "")
         repo_full = f"{owner}/{name}"
@@ -320,7 +337,10 @@ class RepoView(QWidget):
             return
         
         row = selected_rows[0].row()
-        repo = self.repos[row]
+        repo = self._get_repo_for_row(row)
+        if not repo:
+            show_message_dialog(self, "Error", "Could not find repository data")
+            return
         owner = repo.get("owner", {}).get("login", "")
         name = repo.get("name", "")
         repo_full = f"{owner}/{name}"
@@ -359,7 +379,10 @@ class RepoView(QWidget):
             return
         
         row = selected_rows[0].row()
-        repo = self.repos[row]
+        repo = self._get_repo_for_row(row)
+        if not repo:
+            show_message_dialog(self, "Error", "Could not find repository data")
+            return
         owner = repo.get("owner", {}).get("login", "")
         name = repo.get("name", "")
         repo_full = f"{owner}/{name}"
