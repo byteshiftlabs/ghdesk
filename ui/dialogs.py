@@ -69,7 +69,7 @@ def show_message_dialog(parent, title: str, main_text: str, info_text: str = Non
     # Info text (optional)
     if info_text:
         info_label = QLabel(info_text)
-        info_label.setStyleSheet("font-size: 11px; color: #666;")
+        info_label.setStyleSheet("font-size: 11px; color: #b8c0cc;")
         info_label.setWordWrap(True)
         info_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(info_label)
@@ -128,7 +128,7 @@ def show_confirmation_dialog(parent, title: str, main_text: str, info_text: str 
     # Info text (optional)
     if info_text:
         info_label = QLabel(info_text)
-        info_label.setStyleSheet("font-size: 11px; color: #666;")
+        info_label.setStyleSheet("font-size: 11px; color: #b8c0cc;")
         info_label.setWordWrap(True)
         info_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(info_label)
