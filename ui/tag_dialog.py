@@ -9,9 +9,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QShowEvent
-import git
 
 from core.gh_wrapper import GHWrapper
+from core.git_operations import GitRepository
 from ui.dialogs import show_message_dialog, center_dialog_on_parent
 
 
@@ -27,7 +27,7 @@ class CreateTagDialog(QDialog):
         self._centered = False
         
         try:
-            self.repo = git.Repo(repo_path)
+            self.repo = GitRepository(repo_path)
         except Exception as e:
             show_message_dialog(self, "Error", f"Failed to open repository: {str(e)}", msg_type="error")
             return
@@ -69,7 +69,7 @@ class CreateTagDialog(QDialog):
         if self.repo:
             self.target_combo.addItem("HEAD")
             for branch in self.repo.branches:
-                self.target_combo.addItem(branch.name)
+                self.target_combo.addItem(branch)
         
         target_layout.addWidget(self.target_combo)
         form.addRow("Target:", target_layout)

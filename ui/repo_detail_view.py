@@ -13,10 +13,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize, QRect, QPoint
 from PyQt6.QtGui import QFont, QCursor
-import git
 
 from core.gh_wrapper import GHWrapper
-from ui.dialogs import show_message_dialog, show_confirmation_dialog
+from core.git_operations import load_repo_details
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
 
 
@@ -30,106 +29,8 @@ class LoadRepoDetailsThread(QThread):
         self.gh = gh
     
     def run(self):
-        details = {
-            "local": {},
-            "remote": None,
-            "commits": [],
-            "branches": [],
-            "remotes": [],
-            "topics": [],
-            "status": {},
-            "error": None
-        }
-        
-        try:
-            repo = git.Repo(self.repo_path)
-            
-            # Basic info
-            details["local"] = {
-                "name": Path(self.repo_path).name,
-                "path": self.repo_path,
-                "branch": repo.active_branch.name if not repo.head.is_detached else f"detached@{repo.head.commit.hexsha[:7]}",
-                "is_dirty": repo.is_dirty(untracked_files=True),
-            }
-            
-            # Branches with their commits
-            branches_with_commits = []
-            for b in repo.branches:
-                branch_info = {
-                    "name": b.name,
-                    "is_current": b == repo.active_branch if not repo.head.is_detached else False,
-                    "commits": []
-                }
-                # Get last 10 commits for each branch
-                try:
-                    for commit in list(repo.iter_commits(b.name, max_count=10)):
-                        branch_info["commits"].append({
-                            "sha": commit.hexsha[:7],
-                            "message": commit.message.strip().split("\n")[0][:60],
-                            "author": commit.author.name,
-                            "date": commit.committed_datetime.strftime("%Y-%m-%d %H:%M")
-                        })
-                except Exception:
-                    pass
-                branches_with_commits.append(branch_info)
-            
-            details["branches"] = branches_with_commits
-            
-            # Remotes
-            for remote in repo.remotes:
-                remote_info = {
-                    "name": remote.name,
-                    "url": remote.url
-                }
-                details["remotes"].append(remote_info)
-                
-                # Try to get GitHub info if it's a GitHub remote
-                url = remote.url
-                repo_full = None
-                
-                # Handle SSH URLs: git@github.com:owner/repo.git
-                if url.startswith("git@github.com:"):
-                    repo_path = url.replace("git@github.com:", "")
-                    if repo_path.endswith(".git"):
-                        repo_path = repo_path[:-4]
-                    parts = repo_path.split("/")
-                    if len(parts) >= 2:
-                        repo_full = f"{parts[0]}/{parts[1]}"
-                
-                # Handle HTTPS URLs: https://github.com/owner/repo.git
-                elif "github.com/" in url:
-                    if url.endswith(".git"):
-                        url = url[:-4]
-                    parts = url.split("github.com/")[-1].split("/")
-                    if len(parts) >= 2:
-                        repo_full = f"{parts[0]}/{parts[1]}"
-                
-                # Get remote info from GitHub
-                if repo_full and details["remote"] is None:
-                    remote_data = self.gh.get_repo(repo_full)
-                    if remote_data:
-                        details["remote"] = remote_data
-            
-            # Get topics from GitHub API if remote exists
-            if details["remote"]:
-                topics_data = details["remote"].get("repositoryTopics", [])
-                details["topics"] = topics_data if isinstance(topics_data, list) else []
-            
-            # Remove commits from top level since they're now per branch
-            details["commits"] = []
-            
-            # Status
-            details["status"] = {
-                "modified": [item.a_path for item in repo.index.diff(None)],
-                "staged": [item.a_path for item in repo.index.diff("HEAD")] if not repo.head.is_detached else [],
-                "untracked": repo.untracked_files
-            }
-            
-        except git.InvalidGitRepositoryError:
-            details["error"] = "Not a valid Git repository"
-        except Exception as e:
-            details["error"] = str(e)
-        
+        """Load repository details using core business logic"""
+        details = load_repo_details(self.repo_path, self.gh)
         self.details_loaded.emit(details)
 
 
