@@ -7,6 +7,26 @@ import subprocess
 import json
 from typing import Optional, List, Dict, Any
 
+from core.exceptions import GitHubNotInstalledError, GitHubAPIError
+from core.logging_config import get_logger
+
+logger = get_logger("github.base")
+
+
+def make_result(success: bool, output: Any = "", error: str = "", returncode: int = 0) -> Dict[str, Any]:
+    """Create a standard result dict"""
+    return {"success": success, "output": output, "error": error, "returncode": returncode}
+
+
+def make_error(error: str, returncode: int = -1) -> Dict[str, Any]:
+    """Create an error result dict"""
+    return make_result(False, "", error, returncode)
+
+
+def make_success(output: Any = "", message: str = "") -> Dict[str, Any]:
+    """Create a success result dict"""
+    return make_result(True, output or message, "", 0)
+
 
 class GHBase:
     """Base class for GitHub CLI operations"""
@@ -23,9 +43,11 @@ class GHBase:
                 text=True,
                 check=True
             )
+            logger.debug("GitHub CLI found")
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
-            raise RuntimeError("GitHub CLI (gh) is not installed or not in PATH")
+            logger.error("GitHub CLI not found")
+            raise GitHubNotInstalledError()
     
     def _run_command(
         self, 
@@ -72,9 +94,36 @@ class GHBase:
                 "returncode": result.returncode
             }
         except Exception as e:
-            return {
-                "success": False,
-                "output": "",
-                "error": str(e),
-                "returncode": -1
-            }
+            return make_error(str(e))
+    
+    def _run_git_command(
+        self, 
+        args: List[str], 
+        cwd: str
+    ) -> Dict[str, Any]:
+        """
+        Run a git command in a specific directory
+        
+        Args:
+            args: Command arguments (without 'git')
+            cwd: Working directory for the command
+            
+        Returns:
+            Dict with 'success', 'output', 'error', 'returncode' keys
+        """
+        try:
+            result = subprocess.run(
+                ["git"] + args,
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=cwd
+            )
+            return make_result(
+                success=result.returncode == 0,
+                output=result.stdout.strip(),
+                error=result.stderr.strip(),
+                returncode=result.returncode
+            )
+        except Exception as e:
+            return make_error(str(e))

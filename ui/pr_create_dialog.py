@@ -17,6 +17,7 @@ from ui.constants import (
     PR_CREATE_DIALOG_WIDTH,
     PR_CREATE_DIALOG_HEIGHT,
     PR_CREATE_BODY_MIN_HEIGHT,
+    WIDGET_LIST_MAX_HEIGHT,
 )
 
 
@@ -145,7 +146,7 @@ class CreatePRDialog(QDialog):
         # Assignees
         assignees_label = QLabel("Assignees:")
         self.assignees_list = QListWidget()
-        self.assignees_list.setMaximumHeight(100)
+        self.assignees_list.setMaximumHeight(WIDGET_LIST_MAX_HEIGHT)
         self.assignees_list.setSelectionMode(
             QListWidget.SelectionMode.MultiSelection
         )
@@ -159,7 +160,7 @@ class CreatePRDialog(QDialog):
         # Labels
         labels_label = QLabel("Labels:")
         self.labels_list = QListWidget()
-        self.labels_list.setMaximumHeight(100)
+        self.labels_list.setMaximumHeight(WIDGET_LIST_MAX_HEIGHT)
         self.labels_list.setSelectionMode(
             QListWidget.SelectionMode.MultiSelection
         )
@@ -181,7 +182,7 @@ class CreatePRDialog(QDialog):
             "You can also add reviewers after creation on GitHub."
         )
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: #666; font-size: 11px; padding: 10px;")
+        info_label.setStyleSheet(STYLE_INFO_PADDED)
         layout.addWidget(info_label)
         
         layout.addStretch()

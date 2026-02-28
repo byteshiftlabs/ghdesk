@@ -12,6 +12,7 @@ from pathlib import Path
 
 from core.gh_wrapper import GHWrapper
 from ui.dialogs import show_message_dialog, center_dialog_on_parent
+from ui.constants import WIDGET_LIST_MAX_HEIGHT
 from PyQt6.QtGui import QShowEvent
 
 
@@ -54,7 +55,7 @@ class CreateRepoDialog(QDialog):
         # Description
         self.desc_edit = QTextEdit()
         self.desc_edit.setPlaceholderText("A brief description of your project...")
-        self.desc_edit.setMaximumHeight(100)
+        self.desc_edit.setMaximumHeight(WIDGET_LIST_MAX_HEIGHT)
         form.addRow("Description:", self.desc_edit)
         
         # Private checkbox

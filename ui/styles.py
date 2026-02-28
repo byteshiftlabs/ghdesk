@@ -566,3 +566,172 @@ QSplitter::handle:hover {
     background-color: #0078d4;
 }
 """
+
+# =============================================================================
+# Inline Style Constants
+# =============================================================================
+# These constants replace hardcoded setStyleSheet() calls throughout the app.
+# Import and use these instead of inline strings for consistency.
+
+# Text styles
+STYLE_HEADER_LARGE = "font-size: 16px; font-weight: bold;"
+STYLE_HEADER_MEDIUM = "font-size: 14px; font-weight: bold;"
+STYLE_HEADER_SMALL = "font-size: 12px; font-weight: bold;"
+STYLE_LABEL_BOLD = "font-weight: bold; padding: 5px;"
+STYLE_LABEL_MUTED = "font-size: 11px; color: #888;"
+STYLE_LABEL_INFO = "font-size: 11px; color: #666;"
+STYLE_LABEL_PADDING_RIGHT = "padding-right: 8px;"
+STYLE_LABEL_ITALIC_MUTED = "color: #888; padding: 16px; font-style: italic;"
+STYLE_LABEL_ITALIC_COMPACT = "color: #888; padding: 8px; font-style: italic;"
+
+# Input styles
+STYLE_INPUT_ERROR = "border: 1px solid #c42b1c;"
+STYLE_INPUT_PADDED = "padding: 4px; font-size: 12px;"
+STYLE_INFO_PADDED = "color: #666; font-size: 11px; padding: 10px;"
+
+# Auth status styles
+STYLE_AUTH_BASE = """
+    background-color: transparent;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 500;
+"""
+
+STYLE_AUTH_SUCCESS = """
+    background-color: #4caf50;
+    color: #ffffff;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    border: 2px solid #388e3c;
+"""
+
+STYLE_AUTH_FAILURE = """
+    background-color: #f44336;
+    color: #ffffff;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    border: 2px solid #d32f2f;
+"""
+
+# Button styles
+STYLE_HIDE_BUTTON = """
+    QPushButton {
+        background: transparent;
+        border: none;
+        font-size: 18px;
+        color: #666;
+    }
+    QPushButton:hover {
+        background: rgba(0, 0, 0, 0.1);
+        color: #000;
+    }
+"""
+
+STYLE_TOPIC_DELETE_BUTTON = """
+    QPushButton {
+        background: transparent;
+        border: none;
+        font-size: 10px;
+        padding: 0px 2px;
+        color: #888;
+    }
+    QPushButton:hover {
+        color: #ff6b6b;
+    }
+"""
+
+# Topic/tag label styles
+STYLE_TOPIC_LABEL = """
+    QLabel {
+        background-color: #e1f5fe;
+        color: #0277bd;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+    }
+"""
+
+# Branch header styles
+STYLE_BRANCH_HEADER_DEFAULT = """
+    QLabel {
+        font-size: 14px;
+        font-weight: bold;
+        color: #58a6ff;
+        padding: 8px;
+        background: rgba(88, 166, 255, 0.15);
+        border-left: 4px solid #58a6ff;
+    }
+"""
+
+STYLE_BRANCH_HEADER_ACTIVE = """
+    QLabel {
+        font-size: 14px;
+        font-weight: bold;
+        color: #2ea44f;
+        padding: 8px;
+        background: rgba(46, 164, 79, 0.15);
+        border-left: 4px solid #2ea44f;
+    }
+"""
+
+# Additional label styles  
+STYLE_LABEL_DESC = "font-size: 12px; margin-top: 8px;"
+STYLE_LABEL_ITEM = "font-size: 11px; font-weight: normal;"
+
+# License box styles
+def get_license_box_style(is_selected: bool) -> str:
+    """Get the style for a license detail box"""
+    if is_selected:
+        return """
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                border: 2px solid #4CAF50;
+                border-radius: 4px;
+                margin-top: 8px;
+                padding-top: 8px;
+                background-color: #f8fff8;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 8px;
+                padding: 0 4px;
+            }
+        """
+    return """
+        QGroupBox {
+            font-weight: bold;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 8px;
+            padding-top: 8px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 8px;
+            padding: 0 4px;
+        }
+    """
+
+
+def get_info_box_style(color: str) -> str:
+    """Get the style for an info box with colored border"""
+    return f"""
+        QGroupBox {{
+            font-weight: bold;
+            font-size: 12px;
+            border: 1px solid {color};
+            border-radius: 4px;
+            margin-top: 8px;
+            padding-top: 8px;
+        }}
+        QGroupBox::title {{
+            color: {color};
+            subcontrol-origin: margin;
+            left: 8px;
+            padding: 0 4px;
+        }}
+    """

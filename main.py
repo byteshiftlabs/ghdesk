@@ -5,6 +5,7 @@ Entry point for the application
 """
 
 import sys
+import os
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
@@ -12,10 +13,15 @@ from PyQt6.QtCore import Qt
 from ui.main_window import MainWindow
 from ui.themes import get_theme
 from ui.constants import APP_NAME, ORGANIZATION_NAME
+from core.logging_config import setup_logging, LOG_LEVEL_DEBUG, LOG_LEVEL_DEFAULT
 
 
 def main():
     """Main entry point"""
+    # Initialize logging
+    log_level = LOG_LEVEL_DEBUG if os.environ.get("GHDESK_DEBUG") else LOG_LEVEL_DEFAULT
+    setup_logging(level=log_level, console=True)
+    
     # Enable High DPI scaling
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough

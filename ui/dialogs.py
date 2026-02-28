@@ -9,6 +9,44 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 
+from ui.constants import (
+    LAYOUT_MARGIN_COMPACT, LAYOUT_SPACING_COMPACT,
+    WIDGET_BUTTON_MIN_WIDTH_SMALL
+)
+from ui.styles import STYLE_HEADER_SMALL, STYLE_LABEL_INFO
+
+
+def _create_dialog_layout(dialog: QDialog, title: str) -> QVBoxLayout:
+    """Common setup for modal dialogs.
+    
+    Sets window title, size policy, modality, and returns a configured layout.
+    """
+    dialog.setWindowTitle(title)
+    dialog.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+    dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
+    
+    layout = QVBoxLayout()
+    layout.setContentsMargins(LAYOUT_MARGIN_COMPACT, LAYOUT_MARGIN_COMPACT, 
+                              LAYOUT_MARGIN_COMPACT, LAYOUT_MARGIN_COMPACT)
+    layout.setSpacing(LAYOUT_SPACING_COMPACT)
+    dialog.setLayout(layout)
+    return layout
+
+
+def _add_dialog_text(layout: QVBoxLayout, main_text: str, info_text: str = None):
+    """Add main and optional info labels to a dialog layout."""
+    main_label = QLabel(main_text)
+    main_label.setStyleSheet(STYLE_HEADER_SMALL)
+    main_label.setWordWrap(True)
+    layout.addWidget(main_label)
+    
+    if info_text:
+        info_label = QLabel(info_text)
+        info_label.setStyleSheet(STYLE_LABEL_INFO)
+        info_label.setWordWrap(True)
+        info_label.setTextFormat(Qt.TextFormat.RichText)
+        layout.addWidget(info_label)
+
 
 def center_dialog_on_parent(dialog: QDialog):
     """Center a dialog on its parent window.
@@ -49,42 +87,18 @@ def show_message_dialog(parent, title: str, main_text: str, info_text: str = Non
         msg_type: "info", "warning", or "error"
     """
     dialog = QDialog(parent)
-    dialog.setWindowTitle(title)
-    dialog.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-    
-    # Set window modality to force GNOME to respect positioning better
-    dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
-    
-    layout = QVBoxLayout()
-    layout.setContentsMargins(12, 12, 12, 12)
-    layout.setSpacing(8)
-    dialog.setLayout(layout)
-    
-    # Main text
-    main_label = QLabel(main_text)
-    main_label.setStyleSheet("font-size: 12px; font-weight: bold;")
-    main_label.setWordWrap(True)
-    layout.addWidget(main_label)
-    
-    # Info text (optional)
-    if info_text:
-        info_label = QLabel(info_text)
-        info_label.setStyleSheet("font-size: 11px; color: #666;")
-        info_label.setWordWrap(True)
-        info_label.setTextFormat(Qt.TextFormat.RichText)
-        layout.addWidget(info_label)
+    layout = _create_dialog_layout(dialog, title)
+    _add_dialog_text(layout, main_text, info_text)
     
     # OK button
     button_box = QDialogButtonBox()
     ok_btn = QPushButton("OK")
-    ok_btn.setMinimumWidth(70)
+    ok_btn.setMinimumWidth(WIDGET_BUTTON_MIN_WIDTH_SMALL)
     ok_btn.clicked.connect(dialog.accept)
     button_box.addButton(ok_btn, QDialogButtonBox.ButtonRole.AcceptRole)
     layout.addWidget(button_box)
     
-    # Center on parent (handles sizing internally)
     center_dialog_on_parent(dialog)
-    
     dialog.exec()
 
 
@@ -108,30 +122,8 @@ def show_confirmation_dialog(parent, title: str, main_text: str, info_text: str 
         accepted: bool if no checkbox
     """
     dialog = QDialog(parent)
-    dialog.setWindowTitle(title)
-    dialog.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-    
-    # Set window modality to force GNOME to respect positioning better
-    dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
-    
-    layout = QVBoxLayout()
-    layout.setContentsMargins(12, 12, 12, 12)
-    layout.setSpacing(8)
-    dialog.setLayout(layout)
-    
-    # Main text
-    main_label = QLabel(main_text)
-    main_label.setStyleSheet("font-size: 12px; font-weight: bold;")
-    main_label.setWordWrap(True)
-    layout.addWidget(main_label)
-    
-    # Info text (optional)
-    if info_text:
-        info_label = QLabel(info_text)
-        info_label.setStyleSheet("font-size: 11px; color: #666;")
-        info_label.setWordWrap(True)
-        info_label.setTextFormat(Qt.TextFormat.RichText)
-        layout.addWidget(info_label)
+    layout = _create_dialog_layout(dialog, title)
+    _add_dialog_text(layout, main_text, info_text)
     
     # Optional checkbox
     checkbox = None
@@ -142,18 +134,16 @@ def show_confirmation_dialog(parent, title: str, main_text: str, info_text: str 
     # Buttons
     button_box = QDialogButtonBox()
     yes_btn = QPushButton(yes_text)
-    yes_btn.setMinimumWidth(70)
+    yes_btn.setMinimumWidth(WIDGET_BUTTON_MIN_WIDTH_SMALL)
     yes_btn.clicked.connect(dialog.accept)
     no_btn = QPushButton(no_text)
-    no_btn.setMinimumWidth(70)
+    no_btn.setMinimumWidth(WIDGET_BUTTON_MIN_WIDTH_SMALL)
     no_btn.clicked.connect(dialog.reject)
     button_box.addButton(yes_btn, QDialogButtonBox.ButtonRole.AcceptRole)
     button_box.addButton(no_btn, QDialogButtonBox.ButtonRole.RejectRole)
     layout.addWidget(button_box)
     
-    # Center on parent (handles sizing internally)
     center_dialog_on_parent(dialog)
-    
     result = dialog.exec() == QDialog.DialogCode.Accepted
     
     if checkbox_text:

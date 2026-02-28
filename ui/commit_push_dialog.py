@@ -20,6 +20,7 @@ from ui.constants import (
     COMMIT_PUSH_DIALOG_HEIGHT,
     COMMIT_PUSH_SPLITTER_LEFT,
     COMMIT_PUSH_SPLITTER_RIGHT,
+    WIDGET_LIST_MAX_HEIGHT,
 )
 
 
@@ -82,7 +83,7 @@ class CommitPushDialog(QDialog):
         left_panel.setLayout(left_layout)
         
         left_label = QLabel("Modified Files")
-        left_label.setStyleSheet("font-weight: bold; padding: 5px;")
+        left_label.setStyleSheet(STYLE_LABEL_BOLD)
         left_layout.addWidget(left_label)
         
         self.file_list = QListWidget()
@@ -98,7 +99,7 @@ class CommitPushDialog(QDialog):
         right_panel.setLayout(right_layout)
         
         right_label = QLabel("Diff Preview")
-        right_label.setStyleSheet("font-weight: bold; padding: 5px;")
+        right_label.setStyleSheet(STYLE_LABEL_BOLD)
         right_layout.addWidget(right_label)
         
         self.diff_viewer = QTextEdit()
@@ -117,7 +118,7 @@ class CommitPushDialog(QDialog):
         
         commit_layout.addWidget(QLabel("Commit message:"))
         self.commit_message = QTextEdit()
-        self.commit_message.setMaximumHeight(100)
+        self.commit_message.setMaximumHeight(WIDGET_LIST_MAX_HEIGHT)
         self.commit_message.setPlaceholderText("Enter commit message...")
         commit_layout.addWidget(self.commit_message)
         

@@ -23,8 +23,11 @@ from ui.themes import get_theme, THEMES
 from ui.dialogs import show_message_dialog
 from ui.constants import (
     APP_TITLE, WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT,
-    SPLITTER_FILE_TREE_WIDTH, SPLITTER_TABS_WIDTH, SPLITTER_DETAILS_WIDTH
+    SPLITTER_FILE_TREE_WIDTH, SPLITTER_TABS_WIDTH, SPLITTER_DETAILS_WIDTH,
+    WIDGET_THEME_COMBO_MIN_WIDTH, DIALOG_MESSAGE_BOX_MIN_WIDTH,
+    STATUS_MESSAGE_TIMEOUT
 )
+from ui.styles import STYLE_AUTH_BASE, STYLE_AUTH_SUCCESS, STYLE_AUTH_FAILURE, STYLE_LABEL_PADDING_RIGHT
 
 
 class AuthCheckThread(QThread):
@@ -108,12 +111,7 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.auth_label = QLabel("Not authenticated")
-        self.auth_label.setStyleSheet("""
-            background-color: transparent;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-weight: 500;
-        """)
+        self.auth_label.setStyleSheet(STYLE_AUTH_BASE)
         self.status_bar.addPermanentWidget(self.auth_label)
     
     def create_toolbar(self):
@@ -161,10 +159,10 @@ class MainWindow(QMainWindow):
         
         # Theme selector on the right
         theme_label = QLabel("🎨 Theme:")
-        theme_label.setStyleSheet("padding-right: 8px;")
+        theme_label.setStyleSheet(STYLE_LABEL_PADDING_RIGHT)
         toolbar.addWidget(theme_label)
         self.theme_combo = QComboBox()
-        self.theme_combo.setMinimumWidth(120)
+        self.theme_combo.setMinimumWidth(WIDGET_THEME_COMBO_MIN_WIDTH)
         for theme_id, theme_name in THEMES.items():
             self.theme_combo.addItem(theme_name, theme_id)
         self.theme_combo.currentIndexChanged.connect(self.change_theme)
@@ -184,33 +182,19 @@ class MainWindow(QMainWindow):
         
         if authenticated:
             self.auth_label.setText("✓ Authenticated")
-            self.auth_label.setStyleSheet("""
-                background-color: #4caf50;
-                color: #ffffff;
-                padding: 6px 16px;
-                border-radius: 4px;
-                font-weight: 600;
-                border: 2px solid #388e3c;
-            """)
+            self.auth_label.setStyleSheet(STYLE_AUTH_SUCCESS)
             self.login_action.setEnabled(False)
             self.logout_action.setEnabled(True)
-            self.status_bar.showMessage("Ready", 3000)
+            self.status_bar.showMessage("Ready", STATUS_MESSAGE_TIMEOUT)
             
             # Load GitHub repos
             self.remote_view.load_repos()
         else:
             self.auth_label.setText("✗ Not authenticated")
-            self.auth_label.setStyleSheet("""
-                background-color: #f44336;
-                color: #ffffff;
-                padding: 6px 16px;
-                border-radius: 4px;
-                font-weight: 600;
-                border: 2px solid #d32f2f;
-            """)
+            self.auth_label.setStyleSheet(STYLE_AUTH_FAILURE)
             self.login_action.setEnabled(True)
             self.logout_action.setEnabled(False)
-            self.status_bar.showMessage("Not authenticated with GitHub", 3000)
+            self.status_bar.showMessage("Not authenticated with GitHub", STATUS_MESSAGE_TIMEOUT)
     
     def login(self):
         """Login to GitHub"""
@@ -226,7 +210,6 @@ class MainWindow(QMainWindow):
     
     def logout(self):
         """Logout from GitHub"""
-        print("[DIALOG] Creating QMessageBox: 'Confirm Logout'")
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Icon.Question)
         msg_box.setWindowTitle("Confirm Logout")
@@ -235,9 +218,8 @@ class MainWindow(QMainWindow):
         msg_box.setDefaultButton(QMessageBox.StandardButton.No)
         msg_box.button(QMessageBox.StandardButton.Yes).setText("Yes")
         msg_box.button(QMessageBox.StandardButton.No).setText("No")
-        msg_box.setMinimumWidth(400)
+        msg_box.setMinimumWidth(DIALOG_MESSAGE_BOX_MIN_WIDTH)
         
-        print("[DIALOG] Executing QMessageBox: 'Confirm Logout'")
         reply = msg_box.exec()
         
         if reply == QMessageBox.StandardButton.Yes:
@@ -264,14 +246,14 @@ class MainWindow(QMainWindow):
         if (path_obj / ".git").exists():
             # Load repo details in the right panel
             self.repo_detail_view.load_repo(path)
-            self.status_bar.showMessage(f"Loaded repository: {path_obj.name}", 3000)
+            self.status_bar.showMessage(f"Loaded repository: {path_obj.name}", STATUS_MESSAGE_TIMEOUT)
         else:
             # Scan directory for repositories
             self.status_bar.showMessage(f"Scanning {path}...")
             self.local_view.scan_directory(path)
             # Switch to local repositories tab
             self.tabs.setCurrentIndex(0)
-            self.status_bar.showMessage(f"Found repositories in {path}", 3000)
+            self.status_bar.showMessage(f"Found repositories in {path}", STATUS_MESSAGE_TIMEOUT)
     
     def on_local_repo_selected(self, path: str):
         """Handle click on a local repository"""
@@ -279,7 +261,7 @@ class MainWindow(QMainWindow):
         if self.repo_detail_view.isHidden():
             self.toggle_detail_panel()
         self.repo_detail_view.load_repo(path)
-        self.status_bar.showMessage(f"Loaded repository: {Path(path).name}", 3000)
+        self.status_bar.showMessage(f"Loaded repository: {Path(path).name}", STATUS_MESSAGE_TIMEOUT)
     
     def on_github_repo_selected(self, repo_full_name: str):
         """Handle click on a GitHub repository"""
@@ -287,7 +269,7 @@ class MainWindow(QMainWindow):
         if self.repo_detail_view.isHidden():
             self.toggle_detail_panel()
         self.repo_detail_view.load_github_repo(repo_full_name)
-        self.status_bar.showMessage(f"Loaded repository: {repo_full_name}", 3000)
+        self.status_bar.showMessage(f"Loaded repository: {repo_full_name}", STATUS_MESSAGE_TIMEOUT)
     
     def toggle_detail_panel(self):
         """Toggle visibility of the detail panel"""

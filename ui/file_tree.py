@@ -7,6 +7,8 @@ from pathlib import Path
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QLineEdit, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal
 
+from ui.styles import STYLE_HEADER_MEDIUM, STYLE_INPUT_ERROR
+
 
 class FileTreeWidget(QWidget):
     """Widget displaying filesystem tree"""
@@ -26,7 +28,7 @@ class FileTreeWidget(QWidget):
         
         # Header
         header = QLabel("Filesystem")
-        header.setStyleSheet("font-weight: 600; font-size: 14px; padding: 8px;")
+        header.setStyleSheet(STYLE_HEADER_MEDIUM)
         layout.addWidget(header)
         
         # Path input
@@ -128,5 +130,5 @@ class FileTreeWidget(QWidget):
             # Could expand the tree to show this path, but that's complex
             # For now, just emit the signal
         else:
-            self.path_input.setStyleSheet("border: 1px solid #c42b1c;")
+            self.path_input.setStyleSheet(STYLE_INPUT_ERROR)
             # Reset style after a delay would be nice, but keep it simple for now

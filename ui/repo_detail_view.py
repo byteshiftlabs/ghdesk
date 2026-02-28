@@ -17,6 +17,17 @@ from PyQt6.QtGui import QFont, QCursor
 from core.gh_wrapper import GHWrapper
 from core.git_operations import load_repo_details
 from ui.dialogs import show_message_dialog, show_confirmation_dialog
+from ui.constants import (
+    WIDGET_LIST_MAX_HEIGHT_MEDIUM, WIDGET_SCROLL_MAX_HEIGHT,
+    WIDGET_BUTTON_MIN_WIDTH_SMALL, WIDGET_COMMITS_MAX_HEIGHT,
+    WIDGET_COMMITS_ROW_HEIGHT, WIDGET_COMMITS_HEADER_HEIGHT
+)
+from ui.styles import (
+    STYLE_HEADER_LARGE, STYLE_HIDE_BUTTON, STYLE_LABEL_MUTED,
+    STYLE_LABEL_ITALIC_MUTED, STYLE_LABEL_ITALIC_COMPACT, STYLE_TOPIC_LABEL,
+    STYLE_TOPIC_DELETE_BUTTON, STYLE_HEADER_SMALL, STYLE_LABEL_INFO,
+    STYLE_INPUT_PADDED, STYLE_BRANCH_HEADER_DEFAULT, STYLE_BRANCH_HEADER_ACTIVE
+)
 
 
 class LoadRepoDetailsThread(QThread):
@@ -61,7 +72,7 @@ class RepoDetailView(QWidget):
         header_container.setLayout(header_layout)
         
         self.header = QLabel("Select a repository from the file tree")
-        self.header.setStyleSheet("font-size: 16px; font-weight: 600;")
+        self.header.setStyleSheet(STYLE_HEADER_LARGE)
         header_layout.addWidget(self.header)
         
         header_layout.addStretch()
@@ -69,18 +80,7 @@ class RepoDetailView(QWidget):
         # Hide button (X icon like VS Code)
         hide_btn = QPushButton("✕")
         hide_btn.setFixedSize(24, 24)
-        hide_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                font-size: 18px;
-                color: #666;
-            }
-            QPushButton:hover {
-                background: rgba(0, 0, 0, 0.1);
-                color: #000;
-            }
-        """)
+        hide_btn.setStyleSheet(STYLE_HIDE_BUTTON)
         hide_btn.setToolTip("Hide panel")
         hide_btn.clicked.connect(self.hide_requested.emit)
         header_layout.addWidget(hide_btn)
@@ -195,7 +195,7 @@ class RepoDetailView(QWidget):
         modified_group.setLayout(modified_layout)
         self.modified_list = QTextEdit()
         self.modified_list.setReadOnly(True)
-        self.modified_list.setMaximumHeight(150)
+        self.modified_list.setMaximumHeight(WIDGET_LIST_MAX_HEIGHT_MEDIUM)
         modified_layout.addWidget(self.modified_list)
         layout.addWidget(modified_group)
         
@@ -205,7 +205,7 @@ class RepoDetailView(QWidget):
         staged_group.setLayout(staged_layout)
         self.staged_list = QTextEdit()
         self.staged_list.setReadOnly(True)
-        self.staged_list.setMaximumHeight(150)
+        self.staged_list.setMaximumHeight(WIDGET_LIST_MAX_HEIGHT_MEDIUM)
         staged_layout.addWidget(self.staged_list)
         layout.addWidget(staged_group)
         
@@ -215,7 +215,7 @@ class RepoDetailView(QWidget):
         untracked_group.setLayout(untracked_layout)
         self.untracked_list = QTextEdit()
         self.untracked_list.setReadOnly(True)
-        self.untracked_list.setMaximumHeight(150)
+        self.untracked_list.setMaximumHeight(WIDGET_LIST_MAX_HEIGHT_MEDIUM)
         untracked_layout.addWidget(self.untracked_list)
         layout.addWidget(untracked_group)
         
@@ -254,7 +254,7 @@ class RepoDetailView(QWidget):
         # Header with add button
         header_layout = QHBoxLayout()
         info_label = QLabel("GitHub repository topics/keywords")
-        info_label.setStyleSheet("color: #888; font-size: 11px;")
+        info_label.setStyleSheet(STYLE_LABEL_MUTED)
         header_layout.addWidget(info_label)
         header_layout.addStretch()
         
@@ -266,8 +266,8 @@ class RepoDetailView(QWidget):
         # Scrollable area for topics
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setMinimumHeight(150)
-        scroll.setMaximumHeight(400)
+        scroll.setMinimumHeight(WIDGET_LIST_MAX_HEIGHT_MEDIUM)
+        scroll.setMaximumHeight(WIDGET_SCROLL_MAX_HEIGHT)
         
         # Container for topic badges
         self.topics_container = QWidget()
@@ -475,7 +475,7 @@ class RepoDetailView(QWidget):
         
         if not self.current_topics:
             no_topics = QLabel("No topics set for this repository")
-            no_topics.setStyleSheet("color: #888; padding: 16px; font-style: italic;")
+            no_topics.setStyleSheet(STYLE_LABEL_ITALIC_MUTED)
             self.topics_layout.addWidget(no_topics)
             return
         
@@ -494,36 +494,14 @@ class RepoDetailView(QWidget):
             
             # Topic badge
             topic_label = QLabel(f" {topic_name} ")
-            topic_label.setStyleSheet("""
-                QLabel {
-                    background: #0969da;
-                    color: white;
-                    padding: 6px 14px;
-                    border-radius: 16px;
-                    font-size: 13px;
-                    font-weight: 500;
-                }
-            """)
+            topic_label.setStyleSheet(STYLE_TOPIC_LABEL)
             topic_row_layout.addWidget(topic_label)
             
             # Delete button (if applicable)
             if self.current_repo_full_name:
                 delete_btn = QPushButton("Remove")
                 delete_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-                delete_btn.setStyleSheet("""
-                    QPushButton {
-                        background: transparent;
-                        color: #cf222e;
-                        border: 1px solid #cf222e;
-                        border-radius: 6px;
-                        padding: 4px 10px;
-                        font-size: 12px;
-                    }
-                    QPushButton:hover {
-                        background: #cf222e;
-                        color: white;
-                    }
-                """)
+                delete_btn.setStyleSheet(STYLE_TOPIC_DELETE_BUTTON)
                 delete_btn.clicked.connect(lambda checked, t=topic_name: self.remove_topic(t))
                 topic_row_layout.addWidget(delete_btn)
             
@@ -539,7 +517,6 @@ class RepoDetailView(QWidget):
             return
         
         # Create custom input dialog
-        print("[DIALOG] Creating inline 'Add Topic' dialog")
         dialog = QDialog(self)
         dialog.setWindowTitle("Add Topic")
         
@@ -550,34 +527,33 @@ class RepoDetailView(QWidget):
         
         # Main text
         main_label = QLabel("Add a new topic")
-        main_label.setStyleSheet("font-size: 12px; font-weight: bold;")
+        main_label.setStyleSheet(STYLE_HEADER_SMALL)
         layout.addWidget(main_label)
         
         # Info text
         info_label = QLabel("Enter topic name (lowercase, hyphens instead of spaces)")
-        info_label.setStyleSheet("font-size: 11px; color: #666;")
+        info_label.setStyleSheet(STYLE_LABEL_INFO)
         layout.addWidget(info_label)
         
         # Input field
         topic_input = QLineEdit()
         topic_input.setPlaceholderText("e.g., python, machine-learning")
-        topic_input.setStyleSheet("padding: 4px; font-size: 12px;")
+        topic_input.setStyleSheet(STYLE_INPUT_PADDED)
         layout.addWidget(topic_input)
         
         # Buttons
         button_box = QDialogButtonBox()
         add_btn = QPushButton("Add")
-        add_btn.setMinimumWidth(70)
+        add_btn.setMinimumWidth(WIDGET_BUTTON_MIN_WIDTH_SMALL)
         add_btn.clicked.connect(dialog.accept)
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setMinimumWidth(70)
+        cancel_btn.setMinimumWidth(WIDGET_BUTTON_MIN_WIDTH_SMALL)
         cancel_btn.clicked.connect(dialog.reject)
         button_box.addButton(add_btn, QDialogButtonBox.ButtonRole.AcceptRole)
         button_box.addButton(cancel_btn, QDialogButtonBox.ButtonRole.RejectRole)
         layout.addWidget(button_box)
         
         dialog.adjustSize()
-        print("[DIALOG] Executing inline 'Add Topic' dialog")
         
         # Execute dialog
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -640,7 +616,7 @@ class RepoDetailView(QWidget):
         
         if not branches:
             no_activity = QLabel("No branch activity available")
-            no_activity.setStyleSheet("color: #888; padding: 16px; font-style: italic;")
+            no_activity.setStyleSheet(STYLE_LABEL_ITALIC_MUTED)
             self.activity_layout.addWidget(no_activity)
             return
         
@@ -654,28 +630,10 @@ class RepoDetailView(QWidget):
             branch_header = QLabel()
             if is_current:
                 branch_header.setText(f"{branch_name} (current)")
-                branch_header.setStyleSheet("""
-                    QLabel {
-                        font-size: 14px;
-                        font-weight: bold;
-                        color: #2ea44f;
-                        padding: 8px;
-                        background: rgba(46, 164, 79, 0.15);
-                        border-left: 4px solid #2ea44f;
-                    }
-                """)
+                branch_header.setStyleSheet(STYLE_BRANCH_HEADER_ACTIVE)
             else:
                 branch_header.setText(f"{branch_name}")
-                branch_header.setStyleSheet("""
-                    QLabel {
-                        font-size: 14px;
-                        font-weight: bold;
-                        color: #58a6ff;
-                        padding: 8px;
-                        background: rgba(88, 166, 255, 0.15);
-                        border-left: 4px solid #58a6ff;
-                    }
-                """)
+                branch_header.setStyleSheet(STYLE_BRANCH_HEADER_DEFAULT)
             self.activity_layout.addWidget(branch_header)
             
             # Commits table for this branch
@@ -687,7 +645,7 @@ class RepoDetailView(QWidget):
                 commits_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
                 commits_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
                 commits_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-                commits_table.setMaximumHeight(min(len(commits) * 30 + 35, 300))
+                commits_table.setMaximumHeight(min(len(commits) * WIDGET_COMMITS_ROW_HEIGHT + WIDGET_COMMITS_HEADER_HEIGHT, WIDGET_COMMITS_MAX_HEIGHT))
                 
                 commits_table.setRowCount(len(commits))
                 for row, commit in enumerate(commits):
@@ -699,7 +657,7 @@ class RepoDetailView(QWidget):
                 self.activity_layout.addWidget(commits_table)
             else:
                 no_commits = QLabel("  No commits")
-                no_commits.setStyleSheet("color: #888; padding: 8px; font-style: italic;")
+                no_commits.setStyleSheet(STYLE_LABEL_ITALIC_COMPACT)
                 self.activity_layout.addWidget(no_commits)
         
         self.activity_layout.addStretch()

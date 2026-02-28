@@ -20,7 +20,7 @@ from ui.constants import (
     COLUMN_WIDTH_NAME, COLUMN_WIDTH_OWNER, COLUMN_WIDTH_PATH,
     COLUMN_WIDTH_DESCRIPTION, COLUMN_WIDTH_BRANCH, COLUMN_WIDTH_STATUS,
     COLUMN_WIDTH_VISIBILITY, COLUMN_WIDTH_LICENSE, COLUMN_WIDTH_UPDATED,
-    COLUMN_WIDTH_REMOTE
+    COLUMN_WIDTH_REMOTE, GITHUB_REPO_LIST_LIMIT
 )
 
 
@@ -42,7 +42,7 @@ class LoadReposThread(QThread):
             else:
                 repos = []
         else:
-            repos = self.gh.list_repos(limit=200)
+            repos = self.gh.list_repos(limit=GITHUB_REPO_LIST_LIMIT)
         
         self.repos_loaded.emit(repos)
 
