@@ -354,10 +354,10 @@ def get_license_by_id(license_id: str):
     # Try direct key lookup
     if license_id.lower() in LICENSES:
         return LICENSES[license_id.lower()]
-    
+
     # Try SPDX ID lookup
     for key, license_info in LICENSES.items():
         if license_info["spdx_id"].lower() == license_id.lower():
             return license_info
-    
+
     return None
