@@ -154,6 +154,11 @@ class MainWindow(QMainWindow):
         self.toggle_panel_action.triggered.connect(self.toggle_detail_panel)
         toolbar.addAction(self.toggle_panel_action)
 
+        # Toggle sidebar
+        self.toggle_sidebar_action = QAction("Hide Sidebar", self)
+        self.toggle_sidebar_action.triggered.connect(self.toggle_sidebar)
+        toolbar.addAction(self.toggle_sidebar_action)
+
         # Add spacer to push theme selector to the right
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -283,6 +288,15 @@ class MainWindow(QMainWindow):
         else:
             self.repo_detail_view.hide()
             self.toggle_panel_action.setText("Show Details")
+
+    def toggle_sidebar(self):
+        """Toggle visibility of the sidebar (file tree)"""
+        if self.file_tree.isHidden():
+            self.file_tree.show()
+            self.toggle_sidebar_action.setText("Hide Sidebar")
+        else:
+            self.file_tree.hide()
+            self.toggle_sidebar_action.setText("Show Sidebar")
 
     def create_repository(self):
         """Open create repository dialog"""

@@ -2,7 +2,6 @@
 Filesystem tree view widget
 """
 
-import os
 from pathlib import Path
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget, QLineEdit, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -40,27 +39,36 @@ class FileTreeWidget(QWidget):
         # Tree widget
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
+        self.tree.setRootIsDecorated(True)
+        self.tree.setIndentation(20)
+        self.tree.setAnimated(True)
+        self.tree.setExpandsOnDoubleClick(True)
         self.tree.itemClicked.connect(self.on_item_clicked)
         self.tree.itemExpanded.connect(self.on_item_expanded)
+        self.tree.itemCollapsed.connect(self.on_item_collapsed)
         layout.addWidget(self.tree)
 
     def populate_root(self):
-        """Populate root directories"""
+        """Populate root directories starting from project's parent directory"""
         self.tree.clear()
 
-        # Add home directory only (don't expose root filesystem)
-        home = str(Path.home())
-        home_item = self.create_tree_item("Home", home)
-        self.tree.addTopLevelItem(home_item)
-        self.add_placeholder(home_item)
+        # Start from the project's parent directory
+        project_dir = Path(__file__).resolve().parent.parent  # ui/ -> ghdesk/
+        start_dir = project_dir.parent  # ghdesk/ -> parent
+        
+        # Create root item for the starting directory
+        root_item = self.create_tree_item(f"▼ {start_dir.name}", str(start_dir), expandable=True)
+        self.tree.addTopLevelItem(root_item)
+        
+        # Populate children immediately (expanded by default)
+        self.populate_children(root_item)
+        root_item.setExpanded(True)
 
-        # Expand home directory by default
-        home_item.setExpanded(True)
-
-    def create_tree_item(self, text: str, path: str) -> QTreeWidgetItem:
+    def create_tree_item(self, text: str, path: str, expandable: bool = False) -> QTreeWidgetItem:
         """Create a tree item with stored path"""
         item = QTreeWidgetItem([text])
         item.setData(0, Qt.ItemDataRole.UserRole, path)
+        item.setData(0, Qt.ItemDataRole.UserRole + 1, expandable)  # Store if expandable
         return item
 
     def add_placeholder(self, parent: QTreeWidgetItem):
@@ -70,10 +78,19 @@ class FileTreeWidget(QWidget):
 
     def on_item_expanded(self, item: QTreeWidgetItem):
         """Handle item expansion"""
+        # Update arrow indicator
+        text = item.text(0)
+        if text.startswith("▶"):
+            item.setText(0, "▼" + text[1:])
+        
         # Remove placeholder and populate real children
         if item.childCount() == 1 and item.child(0).text(0) == "":
             item.removeChild(item.child(0))
             self.populate_children(item)
+            
+            # If directory is empty, add placeholder back so it can still collapse
+            if item.childCount() == 0:
+                self.add_placeholder(item)
 
     def populate_children(self, parent: QTreeWidgetItem):
         """Populate children of a directory"""
@@ -101,7 +118,7 @@ class FileTreeWidget(QWidget):
                 if (directory / ".git").exists():
                     icon = "[R]"
 
-                item = self.create_tree_item(f"{icon} {directory.name}", str(directory))
+                item = self.create_tree_item(f"▶ {icon} {directory.name}", str(directory), expandable=True)
                 parent.addChild(item)
 
                 # Add placeholder to show expansion arrow
@@ -117,6 +134,17 @@ class FileTreeWidget(QWidget):
         if path:
             self.path_input.setText(path)
             self.directory_selected.emit(path)
+        
+        # Toggle expand/collapse on click for expandable items
+        expandable = item.data(0, Qt.ItemDataRole.UserRole + 1)
+        if expandable:
+            item.setExpanded(not item.isExpanded())
+
+    def on_item_collapsed(self, item: QTreeWidgetItem):
+        """Handle item collapse - update arrow indicator"""
+        text = item.text(0)
+        if text.startswith("▼"):
+            item.setText(0, "▶" + text[1:])
 
     def navigate_to_path(self):
         """Navigate to the path entered in the input field"""
