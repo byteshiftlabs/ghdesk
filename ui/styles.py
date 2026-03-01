@@ -29,6 +29,11 @@ STYLE_INFO_TEXT_MUTED = "color: #888; font-size: 11px;"
 STYLE_DESCRIPTION = "font-size: 12px; margin-top: 8px;"
 STYLE_NORMAL_TEXT = "font-size: 11px; font-weight: normal;"
 
+# Status text styles
+STYLE_SUCCESS_TEXT = "color: #2ea44f; font-weight: bold;"
+STYLE_ERROR_TEXT = "color: #cf222e; font-weight: bold;"
+STYLE_WARNING_TEXT = "color: #bf8700; font-weight: bold;"
+
 # Empty state / placeholder text
 STYLE_EMPTY_STATE = "color: #888; padding: 16px; font-style: italic;"
 STYLE_EMPTY_STATE_SMALL = "color: #888; padding: 8px; font-style: italic;"
