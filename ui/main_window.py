@@ -5,13 +5,13 @@ Main application window
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QMainWindow, QWidget, QVBoxLayout,
     QTabWidget, QToolBar, QStatusBar, QMessageBox,
-    QPushButton, QLabel, QFileDialog, QSplitter, QComboBox, QSizePolicy,
+    QLabel, QSplitter, QComboBox, QSizePolicy,
     QApplication
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QAction
 
 from core.gh_wrapper import GHWrapper
 from core.repo_manager import RepoManager
@@ -314,6 +314,6 @@ class MainWindow(QMainWindow):
         """Change application theme"""
         theme_id = self.theme_combo.itemData(index)
         stylesheet = get_theme(theme_id)
-        self.parent().setStyleSheet(stylesheet) if self.parent() else None
+        if self.parent():
+            self.parent().setStyleSheet(stylesheet)
         QApplication.instance().setStyleSheet(stylesheet)
-
