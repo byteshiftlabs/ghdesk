@@ -11,7 +11,7 @@ This module exposes the GHWrapper class which combines all GitHub operations:
 
 Usage:
     from core.github import GHWrapper
-    
+
     gh = GHWrapper()
     if gh.is_authenticated():
         repos = gh.list_repos()
@@ -35,7 +35,7 @@ class GHWrapper(
 ):
     """
     Unified GitHub CLI wrapper combining all operations.
-    
+
     Inherits from:
         GHBase: Core command execution
         AuthMixin: Authentication methods

@@ -32,6 +32,9 @@ ENV/
 *.swo
 *~
 
+# Documentation build
+site/
+
 # OS
 .DS_Store
 Thumbs.db
