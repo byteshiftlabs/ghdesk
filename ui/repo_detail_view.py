@@ -6,7 +6,8 @@ Shows detailed information about a local repository with tabs
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel,
-    QTableWidget, QTableWidgetItem, QPushButton, QHeaderView
+    QTableWidget, QTableWidgetItem, QPushButton, QHeaderView,
+    QSplitter
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
@@ -14,6 +15,8 @@ from core.gh_wrapper import GHWrapper
 from core.git_operations import load_repo_details
 from ui.topic_manager import TopicManagerMixin
 from ui.tab_builder import TabBuilderMixin
+from ui.pr_list_widget import PRListWidget
+from ui.pr_detail_view import PRDetailView
 from ui.styles import (
     STYLE_HEADER_LARGE, STYLE_CLOSE_BUTTON,
     STYLE_EMPTY_STATE, STYLE_EMPTY_STATE_SMALL,
@@ -111,8 +114,50 @@ class RepoDetailView(TabBuilderMixin, TopicManagerMixin, QWidget):
         self.remotes_tab = self.create_remotes_tab()
         self.tabs.addTab(self.remotes_tab, "Remotes")
 
+        # Pull Requests tab (only shown for local repos with GitHub remote)
+        self.prs_tab = self._create_prs_tab()
+        self.tabs.addTab(self.prs_tab, "Pull Requests")
+
         # Hide tabs initially
         self.tabs.hide()
+
+    def _create_prs_tab(self) -> QWidget:
+        """Create the Pull Requests tab with list and detail views."""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(MARGIN_NONE, MARGIN_NONE, MARGIN_NONE, MARGIN_NONE)
+        widget.setLayout(layout)
+
+        # Splitter for list and detail
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # PR list (left side)
+        self.pr_list_widget = PRListWidget()
+        self.pr_list_widget.set_gh_wrapper(self.gh)
+        self.pr_list_widget.pr_selected.connect(self._on_pr_selected)
+        splitter.addWidget(self.pr_list_widget)
+
+        # PR detail (right side)
+        self.pr_detail_widget = PRDetailView()
+        self.pr_detail_widget.set_gh_wrapper(self.gh)
+        self.pr_detail_widget.pr_updated.connect(self._on_pr_updated)
+        splitter.addWidget(self.pr_detail_widget)
+
+        # Set initial sizes (40% list, 60% detail)
+        splitter.setSizes([300, 450])
+
+        layout.addWidget(splitter)
+        return widget
+
+    def _on_pr_selected(self, pr_number: int):
+        """Handle PR selection from list."""
+        if self.current_repo_full_name:
+            self.pr_detail_widget.set_repo(self.current_repo_full_name)
+            self.pr_detail_widget.load_pr(pr_number)
+
+    def _on_pr_updated(self):
+        """Handle PR state change (merged, closed, etc.)."""
+        self.pr_list_widget.load_prs()
 
     def load_repo(self, path: str):
         """Load repository details"""
@@ -150,6 +195,7 @@ class RepoDetailView(TabBuilderMixin, TopicManagerMixin, QWidget):
         # Hide/show tabs based on repo type
         status_index = self.tabs.indexOf(self.status_tab)
         remotes_index = self.tabs.indexOf(self.remotes_tab)
+        prs_index = self.tabs.indexOf(self.prs_tab)
 
         if is_local:
             if status_index == -1:
@@ -174,6 +220,19 @@ class RepoDetailView(TabBuilderMixin, TopicManagerMixin, QWidget):
                 self.current_repo_full_name = None
         else:
             self.current_repo_full_name = None
+
+        # Show/hide Pull Requests tab (only for local repos with GitHub remote)
+        has_github_remote = self.current_repo_full_name is not None
+        if is_local and has_github_remote:
+            if prs_index == -1:
+                self.tabs.addTab(self.prs_tab, "Pull Requests")
+            # Load PRs for this repo
+            self.pr_list_widget.set_repo(self.current_repo_full_name)
+            self.pr_detail_widget.set_repo(self.current_repo_full_name)
+            self.pr_detail_widget.clear()
+        else:
+            if prs_index >= 0:
+                self.tabs.removeTab(prs_index)
 
         # Update overview tab - local info
         local = details.get("local", {})

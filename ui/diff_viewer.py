@@ -1,9 +1,9 @@
 """
-Diff viewer syntax highlighter for git diffs.
+Diff viewer syntax highlighter and dialog for git diffs.
 """
 
-from PyQt6.QtCore import QRegularExpression
 from PyQt6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QDialogButtonBox
 
 
 class DiffHighlighter(QSyntaxHighlighter):
@@ -59,3 +59,35 @@ class DiffHighlighter(QSyntaxHighlighter):
         # Index and other meta lines
         elif text.startswith("index ") or text.startswith("new file") or text.startswith("deleted file"):
             self.setFormat(0, len(text), self.meta_format)
+
+
+class DiffViewerDialog(QDialog):
+    """Dialog for viewing git diffs with syntax highlighting."""
+
+    def __init__(self, diff_text: str, title: str = "Diff Viewer", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setMinimumSize(800, 600)
+        self._init_ui(diff_text)
+
+    def _init_ui(self, diff_text: str):
+        """Initialize the dialog UI."""
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        # Diff text area
+        self.diff_edit = QTextEdit()
+        self.diff_edit.setReadOnly(True)
+        self.diff_edit.setFontFamily("Monospace")
+        self.diff_edit.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+
+        # Apply highlighter
+        self.highlighter = DiffHighlighter(self.diff_edit.document())
+        self.diff_edit.setPlainText(diff_text)
+
+        layout.addWidget(self.diff_edit)
+
+        # Button box
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
