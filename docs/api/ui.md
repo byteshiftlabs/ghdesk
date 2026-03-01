@@ -42,6 +42,27 @@ API reference for the user interface layer.
         - load_repo
         - load_github_repo
 
+### PRListView
+
+::: ui.pr_list_view.PRListView
+    options:
+      show_source: false
+      members:
+        - __init__
+        - set_prs
+        - filter_prs
+        - get_selected_pr
+
+### PRDetailView
+
+::: ui.pr_detail_view.PRDetailView
+    options:
+      show_source: false
+      members:
+        - __init__
+        - show_pr
+        - clear
+
 ---
 
 ## Dialogs
@@ -76,6 +97,24 @@ API reference for the user interface layer.
     options:
       show_source: false
 
+### DiffViewerDialog
+
+::: ui.diff_viewer.DiffViewerDialog
+    options:
+      show_source: false
+      members:
+        - __init__
+        - set_diff
+
+### SideBySideDiffDialog
+
+::: ui.diff_viewer.SideBySideDiffDialog
+    options:
+      show_source: false
+      members:
+        - __init__
+        - set_diff
+
 ---
 
 ## Widgets
@@ -98,6 +137,12 @@ API reference for the user interface layer.
     options:
       show_source: false
 
+### SideBySideHighlighter
+
+::: ui.diff_viewer.SideBySideHighlighter
+    options:
+      show_source: false
+
 ---
 
 ## Mixins
@@ -113,6 +158,22 @@ API reference for the user interface layer.
 ::: ui.tab_builder.TabBuilderMixin
     options:
       show_source: false
+
+### PullRequestsMixin
+
+::: ui.pull_requests.PullRequestsMixin
+    options:
+      show_source: false
+      members:
+        - list_prs
+        - view_pr
+        - get_pr_diff
+        - merge_pr
+        - close_pr
+        - reopen_pr
+        - add_pr_comment
+        - request_pr_review
+        - get_pr_checks
 
 ---
 
@@ -169,6 +230,17 @@ from ui.themes import THEMES
 | `SPACING_MEDIUM` | `10` | Medium spacing |
 | `SPACING_LARGE` | `15` | Large spacing |
 
+### Diff Dialog Dimensions
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `DIFF_DIALOG_MIN_WIDTH` | `800` | Minimum width for unified diff dialog |
+| `DIFF_DIALOG_MIN_HEIGHT` | `600` | Minimum height for unified diff dialog |
+| `SBS_DIFF_DIALOG_MIN_WIDTH` | `1200` | Minimum width for side-by-side diff dialog |
+| `SBS_DIFF_DIALOG_MIN_HEIGHT` | `700` | Minimum height for side-by-side diff dialog |
+| `SBS_DIFF_FILE_LIST_WIDTH` | `200` | Width of file list panel |
+| `SBS_DIFF_CONTENT_WIDTH` | `1000` | Width of diff content panels |
+
 ---
 
 ## Styles
@@ -184,6 +256,25 @@ Style strings are defined in `ui/styles.py`:
 | `STYLE_BRANCH_OTHER` | Other branch styling |
 | `STYLE_AUTH_SUCCESS` | Authenticated indicator |
 | `STYLE_AUTH_FAILED` | Not authenticated indicator |
+| `STYLE_DIFF_HEADER_OLD` | Old file header in side-by-side diff |
+| `STYLE_DIFF_HEADER_NEW` | New file header in side-by-side diff |
+| `STYLE_DIFF_FILE_LABEL` | File name label styling |
+
+### Diff Colors
+
+| Constant | Purpose |
+|----------|---------|
+| `COLOR_DIFF_ADDED_FG` | Foreground for added lines |
+| `COLOR_DIFF_ADDED_BG` | Background for added lines |
+| `COLOR_DIFF_REMOVED_FG` | Foreground for removed lines |
+| `COLOR_DIFF_REMOVED_BG` | Background for removed lines |
+| `COLOR_DIFF_HUNK_FG` | Hunk header foreground |
+| `COLOR_DIFF_HEADER_FG` | Diff header foreground |
+| `COLOR_DIFF_META_FG` | Meta line foreground |
+| `COLOR_SBS_ADDED_BG` | Side-by-side added background |
+| `COLOR_SBS_REMOVED_BG` | Side-by-side removed background |
+| `COLOR_SBS_CONTEXT_BG` | Side-by-side context background |
+| `COLOR_SBS_EMPTY_BG` | Side-by-side empty line background |
 
 ---
 

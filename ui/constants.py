@@ -100,6 +100,14 @@ PR_CREATE_DIALOG_WIDTH = 600
 PR_CREATE_DIALOG_HEIGHT = 650
 PR_CREATE_BODY_MIN_HEIGHT = 150
 
+# Diff viewer dialog
+DIFF_DIALOG_MIN_WIDTH = 800
+DIFF_DIALOG_MIN_HEIGHT = 600
+SBS_DIFF_DIALOG_MIN_WIDTH = 1200
+SBS_DIFF_DIALOG_MIN_HEIGHT = 700
+SBS_DIFF_FILE_LIST_WIDTH = 200
+SBS_DIFF_CONTENT_WIDTH = 1000
+
 # =============================================================================
 # Fonts
 # =============================================================================

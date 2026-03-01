@@ -11,6 +11,37 @@ COLOR_STAGED_FILE = "#28a745"   # Green for staged files
 COLOR_MODIFIED_FILE = "#ffa500"  # Orange for modified files
 
 # =============================================================================
+# Diff Viewer Colors
+# =============================================================================
+
+# Unified diff colors
+COLOR_DIFF_ADDED_FG = "#98c379"      # Green text for added lines
+COLOR_DIFF_ADDED_BG = "#2d3a2d"      # Dark green background
+COLOR_DIFF_REMOVED_FG = "#e06c75"    # Red text for removed lines
+COLOR_DIFF_REMOVED_BG = "#3a2d2d"    # Dark red background
+COLOR_DIFF_HUNK_FG = "#56b6c2"       # Cyan for hunk headers (@@)
+COLOR_DIFF_HEADER_FG = "#e5c07b"     # Yellow for file headers
+COLOR_DIFF_META_FG = "#5c6370"       # Gray for metadata lines
+
+# Side-by-side diff colors
+COLOR_SBS_ADDED_BG = "#2d4a2d"       # Darker green for side-by-side
+COLOR_SBS_REMOVED_BG = "#4a2d2d"     # Darker red for side-by-side
+COLOR_SBS_EMPTY_BG = "#2a2a2a"       # Empty line placeholder
+COLOR_SBS_EMPTY_FG = "#4a4a4a"       # Empty line text
+
+# =============================================================================
+# Diff Viewer Styles
+# =============================================================================
+
+STYLE_DIFF_HEADER_OLD = (
+    "font-weight: bold; padding: 4px; background: #3a2d2d; color: #e06c75;"
+)
+STYLE_DIFF_HEADER_NEW = (
+    "font-weight: bold; padding: 4px; background: #2d3a2d; color: #98c379;"
+)
+STYLE_DIFF_FILE_LABEL = "font-weight: bold; padding: 4px;"
+
+# =============================================================================
 # Inline Style Constants
 # =============================================================================
 

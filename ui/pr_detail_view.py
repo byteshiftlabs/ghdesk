@@ -194,6 +194,12 @@ class PRDetailView(QWidget):
         self.diff_btn.clicked.connect(self._on_view_diff)
         actions_layout.addWidget(self.diff_btn)
 
+        # Side-by-side diff button
+        self.sbs_diff_btn = QPushButton("Side-by-Side")
+        self.sbs_diff_btn.setMinimumWidth(BUTTON_MIN_WIDTH_MEDIUM)
+        self.sbs_diff_btn.clicked.connect(self._on_view_sbs_diff)
+        actions_layout.addWidget(self.sbs_diff_btn)
+
         actions_layout.addStretch()
         self.content_layout.addWidget(self.actions_frame)
 
@@ -416,6 +422,19 @@ class PRDetailView(QWidget):
             # Import here to avoid circular import
             from ui.diff_viewer import DiffViewerDialog
             dialog = DiffViewerDialog(diff, f"PR #{self.pr_number} Diff", self)
+            dialog.exec()
+        else:
+            QMessageBox.information(self, "No Diff", "No diff available for this PR.")
+
+    def _on_view_sbs_diff(self):
+        """Handle side-by-side diff button click."""
+        if not self.gh or not self.pr_number:
+            return
+
+        diff = self.gh.get_pr_diff(self.pr_number, repo=self.repo_name)
+        if diff:
+            from ui.diff_viewer import SideBySideDiffDialog
+            dialog = SideBySideDiffDialog(diff, f"PR #{self.pr_number} - Side-by-Side Diff", self)
             dialog.exec()
         else:
             QMessageBox.information(self, "No Diff", "No diff available for this PR.")

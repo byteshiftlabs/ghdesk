@@ -145,6 +145,40 @@ Manage GitHub repository topics (keywords):
 - Add new topics
 - Remove existing topics
 
+### Pull Requests Tab
+
+View and manage pull requests for GitHub repositories:
+
+**PR List View:**
+
+- Filter PRs by state: All, Open, Closed, Merged
+- See PR number, title, author, and state at a glance
+- Click any PR to view details
+
+**PR Detail View:**
+
+- **Header** — PR number, title, and current state badge
+- **Metadata** — Author, creation date, source/target branches
+- **Statistics** — Commits, files changed, additions/deletions
+- **Description** — Full PR body with markdown rendering
+- **Comments** — View and add comments to the discussion
+
+**Actions:**
+
+- **Merge** — Merge the PR (requires appropriate permissions)
+- **Close** — Close the PR without merging
+- **Reopen** — Reopen a previously closed PR
+- **Comment** — Add a comment to the PR discussion
+- **Request Review** — Request a review from a GitHub user
+
+**Diff Viewing:**
+
+- **Unified Diff** — Traditional diff format with additions and deletions
+- **Side-by-Side** — Compare old and new versions in parallel panels
+    - File list on the left for quick navigation
+    - Synced scrolling between left and right panels
+    - Color-coded additions (green) and removals (red)
+
 ### Remotes Tab
 
 View configured Git remotes:
